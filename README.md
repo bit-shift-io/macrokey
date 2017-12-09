@@ -1,18 +1,14 @@
 # macrokey
-A python alternative to auto hotkey (AHK). 
+A simple c++ alternative to auto hotkey (AHK). 
 
 # requirements:
-windows:
+Linux
 
-PyHook - pip3 install pyhook
+# build and run:
+http://doc.qt.io/qt-5/qmake-running.html
 
-PyPiWin32 - pip3 install pypiwin32
-
-PyUserInput - pip3 install pyuserinput
-
-linux:
-
-python3-xlib & python3-pip - sudo apt-get install python3-xlib python3-pip -y
-
-PyUserInput - pip3 install pyuserinput
+qmake -project
+qmake -makefile
+make
+sudo ./macrokey
 

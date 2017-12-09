@@ -1,1 +1,15 @@
-__pycache__
+log.txt
+settings.cfg
+Build
+.directory
+butler
+*.blend1
+_build
+*.pyc
+*.o
+Editor
+.import
+*.*~
+*.save
+*.pro
+.*
