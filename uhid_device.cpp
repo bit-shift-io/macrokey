@@ -37,6 +37,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <linux/uhid.h>
+#include <linux/input.h>
 
 #include <uhid_device.h>
 
@@ -197,191 +198,42 @@ void uhid_device::destroy()
     uhid_write(&ev);
 }
 
-/* This parses raw output reports sent by the kernel to the device. A normal
- * uhid program shouldn't do this but instead just forward the raw report.
- * However, for ducomentational purposes, we try to detect LED events here and
- * print debug messages for it. */
-/*
-void uhid_device::handle_output(struct uhid_event *ev)
-{
-    / * LED messages are adverised via OUTPUT reports; ignore the rest * /
-    if (ev->u.output.rtype != UHID_OUTPUT_REPORT)
-        return;
-    / * LED reports have length 2 bytes * /
-    if (ev->u.output.size != 2)
-        return;
-    / * first byte is report-id which is 0x02 for LEDs in our rdesc * /
-    if (ev->u.output.data[0] != 0x2)
-        return;
-
-    / * print flags payload * /
-    fprintf(stderr, "LED output report received with flags %x\n",
-        ev->u.output.data[1]);
-}
-*/
-
-/*
-int uhid_device::event(int fd)
-{
-    struct uhid_event ev;
-    ssize_t ret;
-
-    memset(&ev, 0, sizeof(ev));
-    ret = read(fd, &ev, sizeof(ev));
-    if (ret == 0) {
-        fprintf(stderr, "Read HUP on uhid-cdev\n");
-        return -EFAULT;
-    } else if (ret < 0) {
-        fprintf(stderr, "Cannot read uhid-cdev: %m\n");
-        return -errno;
-    } else if (ret != sizeof(ev)) {
-        fprintf(stderr, "Invalid size read from uhid-dev: %ld != %lu\n",
-            ret, sizeof(ev));
-        return -EFAULT;
-    }
-
-    switch (ev.type) {
-    case UHID_START:
-        fprintf(stderr, "UHID_START from uhid-dev\n");
-        break;
-    case UHID_STOP:
-        fprintf(stderr, "UHID_STOP from uhid-dev\n");
-        break;
-    case UHID_OPEN:
-        fprintf(stderr, "UHID_OPEN from uhid-dev\n");
-        break;
-    case UHID_CLOSE:
-        fprintf(stderr, "UHID_CLOSE from uhid-dev\n");
-        break;
-    case UHID_OUTPUT:
-        fprintf(stderr, "UHID_OUTPUT from uhid-dev\n");
-        handle_output(&ev);
-        break;
-    case UHID_OUTPUT_EV:
-        fprintf(stderr, "UHID_OUTPUT_EV from uhid-dev\n");
-        break;
-    default:
-        fprintf(stderr, "Invalid event from uhid-dev: %u\n", ev.type);
-    }
-
-    return 0;
-}
-*/
-
 /*
  * Write event to device
  */
 int uhid_device::send_event(uhid_event *ev)
 {
-    /*
-    struct uhid_event ev;
-
-    memset(&ev, 0, sizeof(ev));
-    ev.type = UHID_INPUT;
-    ev.u.input.size = 5;
-
-    ev.u.input.data[0] = 0x1;
-    if (btn1_down)
-        ev.u.input.data[1] |= 0x1;
-    if (btn2_down)
-        ev.u.input.data[1] |= 0x2;
-    if (btn3_down)
-        ev.u.input.data[1] |= 0x4;
-
-    ev.u.input.data[2] = abs_hor;
-    ev.u.input.data[3] = abs_ver;
-    ev.u.input.data[4] = wheel;
-    */
     return uhid_write(ev);
 }
 
-/*
-int uhid_device::keyboard(int fd)
-{
-    char buf[128];
-    ssize_t ret, i;
 
-    ret = read(STDIN_FILENO, buf, sizeof(buf));
-    if (ret == 0) {
-        fprintf(stderr, "Read HUP on stdin\n");
-        return -EFAULT;
-    } else if (ret < 0) {
-        fprintf(stderr, "Cannot read stdin: %m\n");
-        return -errno;
+int uhid_device::send_event(int p_key, int p_state) {
+
+    switch (p_key) {
+    case BTN_LEFT:
+        if (p_state == EV_PRESSED)
+            state.u.input.data[1] |= 0x1;
+        else if (p_state == EV_RELEASED)
+            state.u.input.data[1] &= ~0x1;
+        break;
+
+    case BTN_RIGHT:
+        if (p_state == EV_PRESSED)
+            state.u.input.data[1] |= 0x2;
+        else if (p_state == EV_RELEASED)
+            state.u.input.data[1] &= ~0x2;
+        break;
+
+    case BTN_MIDDLE:
+        if (p_state == EV_PRESSED)
+            state.u.input.data[1] |= 0x4;
+        else if (p_state == EV_RELEASED)
+            state.u.input.data[1] &= ~0x4;
+        break;
     }
 
-    for (i = 0; i < ret; ++i) {
-        switch (buf[i]) {
-        case '1':
-            btn1_down = !btn1_down;
-            ret = send_event(fd);
-            if (ret)
-                return ret;
-            break;
-        case '2':
-            btn2_down = !btn2_down;
-            ret = send_event(fd);
-            if (ret)
-                return ret;
-            break;
-        case '3':
-            btn3_down = !btn3_down;
-            ret = send_event(fd);
-            if (ret)
-                return ret;
-            break;
-        case 'a':
-            abs_hor = -20;
-            ret = send_event(fd);
-            abs_hor = 0;
-            if (ret)
-                return ret;
-            break;
-        case 'd':
-            abs_hor = 20;
-            ret = send_event(fd);
-            abs_hor = 0;
-            if (ret)
-                return ret;
-            break;
-        case 'w':
-            abs_ver = -20;
-            ret = send_event(fd);
-            abs_ver = 0;
-            if (ret)
-                return ret;
-            break;
-        case 's':
-            abs_ver = 20;
-            ret = send_event(fd);
-            abs_ver = 0;
-            if (ret)
-                return ret;
-            break;
-        case 'r':
-            wheel = 1;
-            ret = send_event(fd);
-            wheel = 0;
-            if (ret)
-                return ret;
-            break;
-        case 'f':
-            wheel = -1;
-            ret = send_event(fd);
-            wheel = 0;
-            if (ret)
-                return ret;
-            break;
-        case 'q':
-            return -ECANCELED;
-        default:
-            fprintf(stderr, "Invalid input: %c\n", buf[i]);
-        }
-    }
-
-    return 0;
+    return send_event(&state);
 }
-*/
 
 uhid_device::uhid_device()
 {
@@ -389,7 +241,6 @@ uhid_device::uhid_device()
     const char *path = "/dev/uhid";
     struct pollfd pfds[2];
     int ret;
-    struct termios state;
 
     fprintf(stderr, "Open uhid-cdev %s\n", path);
     fd = open(path, O_RDWR | O_CLOEXEC);
@@ -406,43 +257,16 @@ uhid_device::uhid_device()
         //return EXIT_FAILURE;
     }
 
-    /*
-    pfds[0].fd = STDIN_FILENO;
-    pfds[0].events = POLLIN;
-    pfds[1].fd = fd;
-    pfds[1].events = POLLIN;
 
-    fprintf(stderr, "Press 'q' to quit...\n");
-    while (1) {
-        ret = poll(pfds, 2, -1);
-        if (ret < 0) {
-            fprintf(stderr, "Cannot poll for fds: %m\n");
-            break;
-        }
-        if (pfds[0].revents & POLLHUP) {
-            fprintf(stderr, "Received HUP on stdin\n");
-            break;
-        }
-        if (pfds[1].revents & POLLHUP) {
-            fprintf(stderr, "Received HUP on uhid-cdev\n");
-            break;
-        }
+    // setup state
+    memset(&state, 0, sizeof(state));
+    state.type = UHID_INPUT;
+    state.u.input.size = 5;
+    state.u.input.data[0] = 0x1;
+}
 
-        if (pfds[0].revents & POLLIN) {
-            ret = keyboard(fd);
-            if (ret)
-                break;
-        }
-        if (pfds[1].revents & POLLIN) {
-            ret = event(fd);
-            if (ret)
-                break;
-        }
-    }
-
-    fprintf(stderr, "Destroy uhid device\n");
-    destroy(fd);
-    //return EXIT_SUCCESS;
-    */
+uhid_device::~uhid_device()
+{
+    destroy();
 }
 
