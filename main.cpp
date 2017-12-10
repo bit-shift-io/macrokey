@@ -164,7 +164,7 @@ void process_input(event_device *device, input_event *event, uhid_device* virtua
             fprintf(stderr, "EV_RELEASED\n");
         */
         if (event->code == KEY_A) {
-            virtual_device->send_event(BTN_LEFT, event->value);
+            virtual_device->send_event(BTN_RIGHT, event->value);
         }
 
         if (event->code == KEY_B) {
@@ -172,7 +172,7 @@ void process_input(event_device *device, input_event *event, uhid_device* virtua
         }
 
         if (event->code == KEY_C) {
-            virtual_device->send_event(BTN_RIGHT, event->value);
+            virtual_device->send_event(BTN_LEFT, event->value);
         }
     }
 }
