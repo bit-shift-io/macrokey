@@ -13,3 +13,6 @@ Editor
 *.save
 *.pro
 .*
+*.user
+macrokey
+Makefile
