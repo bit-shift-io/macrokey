@@ -101,7 +101,9 @@
  * This information can be verified by reading /sys/kernel/debug/hid/<dev>/rdesc
  * This file should print the same information as showed above.
  */
-static unsigned char rdesc[] = {
+
+// report descriptor data
+static u_int8_t rdesc[] = {
     0x05, 0x01,	/* USAGE_PAGE (Generic Desktop) */
     0x09, 0x02,	/* USAGE (Mouse) */
     0xa1, 0x01,	/* COLLECTION (Application) */
@@ -165,22 +167,19 @@ int uhid_device::uhid_write(const struct uhid_event *ev)
     }
 }
 
-/*
- * Create virtual uhid device
- */
 int uhid_device::create()
 {
     struct uhid_event ev;
     memset(&ev, 0, sizeof(ev));
-    ev.type = UHID_CREATE;
-    strcpy((char*)ev.u.create.name, "macrokey virtual uhid");
-    ev.u.create.rd_data = rdesc;
-    ev.u.create.rd_size = sizeof(rdesc);
-    ev.u.create.bus = BUS_USB;
-    ev.u.create.vendor = 0x15d9;
-    ev.u.create.product = 0x0a37;
-    ev.u.create.version = 0;
-    ev.u.create.country = 0;
+    ev.type = UHID_CREATE2;
+    strcpy((char*)ev.u.create2.name, "macrokey virtual uhid");
+    memcpy(ev.u.create2.rd_data, rdesc, sizeof(rdesc));
+    ev.u.create2.rd_size = sizeof(rdesc);
+    ev.u.create2.bus = BUS_USB;
+    ev.u.create2.vendor = 0x15d9;
+    ev.u.create2.product = 0x0a37;
+    ev.u.create2.version = 0;
+    ev.u.create2.country = 0;
 
     return uhid_write(&ev);
 }
@@ -206,29 +205,35 @@ int uhid_device::send_event(uhid_event *ev)
     return uhid_write(ev);
 }
 
-
+/*
+UHID_INPUT2:
+Same as UHID_INPUT, but the data array is the last field of uhid_input2_req.
+Enables userspace to write only the required bytes to kernel (ev.type +
+ev.u.input2.size + the part of the data array that matters), instead of
+the entire struct uhid_input2_req.
+*/
 int uhid_device::send_event(int p_key, int p_state) {
 
     switch (p_key) {
     case BTN_LEFT:
         if (p_state == EV_PRESSED)
-            state.u.input.data[1] |= 0x1;
+            state.u.input2.data[1] |= 0x1;
         else if (p_state == EV_RELEASED)
-            state.u.input.data[1] &= ~0x1;
+            state.u.input2.data[1] &= ~0x1;
         break;
 
     case BTN_RIGHT:
         if (p_state == EV_PRESSED)
-            state.u.input.data[1] |= 0x2;
+            state.u.input2.data[1] |= 0x2;
         else if (p_state == EV_RELEASED)
-            state.u.input.data[1] &= ~0x2;
+            state.u.input2.data[1] &= ~0x2;
         break;
 
     case BTN_MIDDLE:
         if (p_state == EV_PRESSED)
-            state.u.input.data[1] |= 0x4;
+            state.u.input2.data[1] |= 0x4;
         else if (p_state == EV_RELEASED)
-            state.u.input.data[1] &= ~0x4;
+            state.u.input2.data[1] &= ~0x4;
         break;
     }
 
@@ -239,7 +244,7 @@ uhid_device::uhid_device()
 {
     //int fd;
     const char *path = "/dev/uhid";
-    struct pollfd pfds[2];
+    //struct pollfd pfds[2];
     int ret;
 
     fprintf(stderr, "Open uhid-cdev %s\n", path);
@@ -260,9 +265,9 @@ uhid_device::uhid_device()
 
     // setup state
     memset(&state, 0, sizeof(state));
-    state.type = UHID_INPUT;
-    state.u.input.size = 5;
-    state.u.input.data[0] = 0x1;
+    state.type = UHID_INPUT2;
+    state.u.input2.size = 5;
+    state.u.input2.data[0] = 0x1;
 }
 
 uhid_device::~uhid_device()

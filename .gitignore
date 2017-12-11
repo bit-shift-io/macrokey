@@ -11,8 +11,8 @@ Editor
 .import
 *.*~
 *.save
-*.pro
+*.pro*
 .*
-*.user
+*.user*
 macrokey
 Makefile

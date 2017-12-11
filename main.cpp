@@ -66,7 +66,7 @@ public:
 
         lock = p_lock;
         // O_RDWR, O_RDONLY
-        fd = ::open(device.c_str(), O_RDWR);
+        fd = ::open(device.c_str(), O_RDONLY);
         if (fd == -1) {
             fprintf(stderr, "Failed to open event device: %s.\n", device.c_str());
             exit;
