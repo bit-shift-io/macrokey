@@ -12,7 +12,6 @@ Editor
 *.*~
 *.save
 *.pro*
-.*
 *.user*
 *.so
 Makefile
