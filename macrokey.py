@@ -35,8 +35,15 @@ BTN_MIDDLE = 0x112
 KEY_A = 30
 KEY_B = 48
 KEY_C = 46
+
 KEY_CTRL = 29
 KEY_ALT = 56
+KEY_SHIFT = 42
+KEY_TILDE = 41
+KEY_CAPSLOCK = 58
+KEY_TAB = 15
+KEY_META = 125 # win key
+KEY_ESC = 1
 
 # Repeatedly click the left mouse
 class ClickRepeatTimer(threading.Thread):
@@ -53,7 +60,7 @@ class ClickRepeatTimer(threading.Thread):
 
     def run(self):
         while not self.event.is_set():
-            print("Click")
+            print("Click ({})".format(self.key))
             macrokey.send_event_to_virtual_device(self.key, EV_PRESSED)
             self.event.wait(self.pressed_time)
             macrokey.send_event_to_virtual_device(self.key, EV_RELEASED)
@@ -77,6 +84,8 @@ class Default:
     rightClickRepeatTimer = None
     ctrl_down = False
     alt_down = False
+    capslock_down = False # may be a way to read from system?
+    modifier_down = False
     key_repeat_map = {}
 
     def process_foot(self, p_type, p_code, p_value, p_device):
@@ -117,6 +126,7 @@ class Default:
 
 
     def process_keyboard(self, p_type, p_code, p_value, p_device):
+        # modifier keys
         if (p_type == EV_KEY and p_value == EV_PRESSED and p_code == KEY_CTRL):
             self.ctrl_down = True
         if (p_type == EV_KEY and p_value == EV_PRESSED and p_code == KEY_ALT):
@@ -126,13 +136,56 @@ class Default:
         if (p_type == EV_KEY and p_value == EV_RELEASED and p_code == KEY_ALT):
             self.alt_down = False
 
-        # record last key
-        if (self.ctrl_down and self.alt_down):
-            print('timer')
+        # modifier key boolean
+        if (self.ctrl_down or self.alt_down):
+            self.modifier_down = True
+        else:
+            self.modifier_down = False
+
+        # timers start
+        # with key combo ctrl + alt + key
+        if (self.ctrl_down and self.alt_down and p_code != KEY_ALT and p_code != KEY_CTRL):
+            if (p_type == EV_KEY and p_value == EV_PRESSED):
+                if (p_code not in self.key_repeat_map):
+                    self.key_repeat_map[p_code] = ClickRepeatTimer(p_code, 0.1, 0.1)
+                    self.key_repeat_map[p_code].start()
+                    print('timer start')
+
+        # timers end
+        # with single key press
+        # ensure no modifier keys are active
+        if (p_type == EV_KEY and p_value == EV_PRESSED and self.modifier_down == False):
             if (p_code in self.key_repeat_map):
+                self.key_repeat_map[p_code].stop()
                 del self.key_repeat_map[p_code]
-            else:
-                self.key_repeat_map[p_code] = ClickRepeatTimer(p_code, 0.1, 0.1)
+                print('timer end')
+
+            # delete all timers
+            # tilde key
+            if (p_code == KEY_TILDE):
+                for key in self.key_repeat_map:
+                    self.key_repeat_map[key].stop()
+                self.key_repeat_map = {}
+                print('timer end all')
+
+            # toggle all timers on/off
+            # caps lock
+            if (p_code == KEY_CAPSLOCK):
+                self.capslock_down = not self.capslock_down
+
+                if (self.capslock_down):
+                    print('timer toggle off')
+                    for key in self.key_repeat_map:
+                        self.key_repeat_map[key].stop()
+                else:
+                    print('timer toggle on')
+                    for key in self.key_repeat_map:
+                        # need to recreate the timers first
+                        self.key_repeat_map[key] = ClickRepeatTimer(key, 0.1, 0.1)
+                        self.key_repeat_map[key].start()
+                    
+                
+
         return
 
 
