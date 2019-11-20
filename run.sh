@@ -1,10 +1,6 @@
 #!/bin/bash
 
-# make macrokey.so
-#if [ ! -f macrokey.so ]; then
-    make
-#fi
-
+cp ./build/macrokey macrokey
 # run
 sudo python macrokey.py
 

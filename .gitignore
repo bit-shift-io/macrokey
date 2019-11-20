@@ -16,3 +16,7 @@ Editor
 *.user*
 *.so
 Makefile
+*.log
+*.code
+build/
+User/

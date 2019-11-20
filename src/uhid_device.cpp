@@ -39,7 +39,7 @@
 #include <linux/uhid.h>
 #include <linux/input.h>
 
-#include <uhid_device.h>
+#include <src/uhid_device.h>
 
 /*
  * HID Report Desciptor

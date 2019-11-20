@@ -23,7 +23,7 @@
 #include <map>
 #include <dirent.h>
 
-#include "uhid_device.h"
+#include "src/uhid_device.h"
 
 #include <boost/python.hpp>
 

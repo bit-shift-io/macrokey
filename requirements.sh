@@ -1,5 +1,5 @@
 #!/bin/bash
 
-yay -S --noconfirm --needed boost
+yay -S --noconfirm --needed boost gdb
 
 $SHELL
