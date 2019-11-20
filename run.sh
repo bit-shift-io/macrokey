@@ -1,6 +1,7 @@
 #!/bin/bash
 
-cp ./build/macrokey macrokey
+cp ./build/libmacrokey.so macrokey.so
+
 # run
 sudo python macrokey.py
 
