@@ -1,108 +1,38 @@
 /**
- *
- * Links:
- * https://cgit.freedesktop.org/~whot/evtest/tree/evtest.c
- * https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/Documentation/hid/uhid.txt?id=refs/tags/v4.10-rc3
- * https://github.com/torvalds/linux/blob/master/samples/uhid/uhid-example.c
+ * macrokey
+ * a small utility to emulate key presses and monitor input devices
+ * on linux
  *
 /** */
 
-
-#include <stdio.h>
-#include <fcntl.h>   // open
-#include <stdlib.h>
-#include <string.h>  // strerror
-#include <errno.h>
-#include <stdint.h>
-#include <assert.h>
-#include <unistd.h>  // daemon, close
-#include <linux/input.h>
-#include <linux/uhid.h>
-#include <iostream>
-#include <vector>
-#include <map>
+//#include <map>
+//#include <fcntl.h>   // open
+//#include <string.h>  // strerror
+//#include <errno.h>
+//#include <assert.h>
+//#include <unistd.h>  // daemon, close
+//#include <linux/uhid.h>
+//#include <stdio.h>
+//#include <stdlib.h>
+//#include <stdint.h>
+//#include <linux/input.h>
+//#include <iostream>
+//#include <vector>
 #include <dirent.h>
-
+#include <boost/python.hpp>
+#include "src/event_device.h"
 #include "src/uhid_device.h"
 
-#include <boost/python.hpp>
 
 using namespace std;
 
-#define ID_FOOTSWITCH 0
-
-uhid_device* virtual_device = NULL;
-
+//#define ID_FOOTSWITCH 0
+uhid_device* virtual_device = NULL; // the app create its own virtual device for playback/emulation of events
+vector<event_device*> system_device_list; // keep a list of system devices
+vector<event_device*> device_list; // keep a list of active devices
 // python callback: https://stackoverflow.com/questions/7204664/pass-callback-from-python-to-c-using-boostpython
-
 // this is the variable that will hold a reference to the python function
 PyObject *py_callback;
-
-// the following function will invoked from python to populate the call back reference
-PyObject *set_py_callback(PyObject *callable)
-{
-    py_callback = callable;       /* Remember new callback */
-    return Py_None;
-}
-
-/**
- * Structure for input devices
- */
-class event_device
-{
-public:
-    string device;
-    string name;
-    int id;
-
-    bool lock;
-    int fd; // filedevice
-
-    event_device(string p_device) {
-        fd = -1;
-        id = -1;
-        device = p_device;
-
-        // read name
-        char nm[256] = "???";
-        fd = ::open(device.c_str(), O_RDONLY);
-        if (fd < 0)
-            return;
-        ioctl(fd, EVIOCGNAME(sizeof(nm)), nm);
-
-        name = nm;
-        fprintf(stderr, "Device: %s, %s\n", device.c_str(), name.c_str());
-
-        ::close(fd);
-    }
-
-    void open(bool p_lock){
-        fprintf(stderr, "Opening Device: %s, %s\n", device.c_str(), name.c_str());
-
-        lock = p_lock;
-        // O_RDWR, O_RDONLY
-        fd = ::open(device.c_str(), O_RDONLY);
-        if (fd == -1) {
-            fprintf(stderr, "Failed to open event device: %s.\n", device.c_str());
-            exit;
-        }
-
-        // lock/grab all input
-        if (lock) {
-            int result = 0;
-            result = ioctl(fd, EVIOCGRAB, 1);
-            fprintf(stderr, "Exclusive access: %s\n", (result == 0) ? "SUCCESS" : "FAILURE");
-        }
-    }
-
-    void close() {
-        int result = ioctl(fd, EVIOCGRAB, 0);
-        ::close(fd);
-    }
-
-    bool is_open() { return fd != -1; }
-};
-
 
 
 /**
@@ -114,7 +44,6 @@ static void root_check() {
       exit(-1);
    }
 }
-
 
 /**
  * Filter for the AutoDevProbe scandir on /dev/input.
@@ -132,8 +61,7 @@ static int is_event_device(const struct dirent *dir) {
  * Scans all /dev/input/event*, display them.
  *
  */
-static vector<event_device*> get_devices() {
-
+static vector<event_device*> get_system_devices() {
     vector<event_device*> list;
 
     struct dirent **namelist;
@@ -144,7 +72,7 @@ static vector<event_device*> get_devices() {
     if (ndev <= 0)
         return list;
 
-    fprintf(stderr, "Available devices:\n");
+    fprintf(stderr, "System devices:\n");
     // list device and names
     for (i = 0; i < ndev; i++)
     {
@@ -162,82 +90,80 @@ static vector<event_device*> get_devices() {
 }
 
 
+void initialize() {
+    // check root permissions
+    root_check();
+
+    // list input devices
+    system_device_list = get_system_devices();
+}
+
+/**
+ * the following function will invoked from python to populate the call back reference
+ */
+PyObject *set_py_callback(PyObject *callable)
+{
+    initialize();
+    py_callback = callable;       /* Remember new callback */
+    return Py_None;
+}
+
+
 /**
  * process input event
  */
 void process_input(event_device *device, input_event *event, uhid_device* virtual_device){
+    /*
     if (device->id != ID_FOOTSWITCH) {
         return;
-    }
+    }*/
     
     // invoke the python function
     boost::python::call<void>(py_callback, event->type, event->code, event->value);
-
-/*
-    if (event->type == EV_KEY) {
-        /*
-        if (event->value == EV_PRESSED)
-            fprintf(stderr, "EV_PRESSED\n");
-
-        if (event->value == EV_RELEASED)
-            fprintf(stderr, "EV_RELEASED\n");
-        * /
-        if (event->code == KEY_A) {
-            virtual_device->send_event(BTN_RIGHT, event->value);
-        }
-
-        if (event->code == KEY_B) {
-            virtual_device->send_event(BTN_MIDDLE, event->value);
-        }
-
-        if (event->code == KEY_C) {
-            virtual_device->send_event(BTN_LEFT, event->value);
-        }
-    }*/
 }
+
 
 void send_event_to_virtual_device(int key, int state) {
     virtual_device->send_event(key, state);
 }
 
-void add_device(string p_device) {
-    const char *cstr = p_device.c_str();
-    printf("add dev: %s\n", cstr);
+/**
+ * open a device for event reading
+ **/
+void open_device(string p_device_name, bool p_exclusive_lock) {
+    const char *device_name = p_device_name.c_str();
+    bool found = false;
+
+    // loop system devices
+    for (int i = 0; i < system_device_list.size(); ++i) {
+
+        // append device if matches
+        if (system_device_list[i]->name.find(device_name) != string::npos) {
+            printf("Device match: %s, %s\n", device_name, system_device_list[i]->name);
+            system_device_list[i]->open(p_exclusive_lock);
+            //system_device_list[i]->id = ID_FOOTSWITCH;
+            device_list.push_back(system_device_list[i]);
+            found = true;
+        }     
+    }
+
+    if (!found) {
+        printf("Device match: none, %s\n", device_name);
+    }
 }
 
+
 void run() {
-    // check root permissions
-    root_check();
-
-    // list input devices
-    vector<event_device*> all_device_list = get_devices();
-    vector<event_device*> device_list;
-
-    // open appropriate devices
-    // TODO: move this device code to python/commandline
-    for (int i = 0; i < all_device_list.size(); ++i) {
-        if (all_device_list[i]->name.find("FootSwitch") != string::npos) {
-            all_device_list[i]->open(true);
-            all_device_list[i]->id = ID_FOOTSWITCH;
-            device_list.push_back(all_device_list[i]);
-        }
-        // Brons' new foot pedal
-        if (all_device_list[i]->name.find("HID 413d:2107 Keyboard") != string::npos) {
-            all_device_list[i]->open(true);
-            all_device_list[i]->id = ID_FOOTSWITCH;
-            device_list.push_back(all_device_list[i]);
-        }        
+    // make sure we have some input
+    if (device_list.size() == 0) {
+        printf("Please configure at least 1 device\n");
+        exit(1);
     }
 
-    // Daemonize process. Don't change working directory but redirect standard
-    // inputs and outputs to /dev/null
-    /*
-    if (daemon(1, 0) == -1) {
-       printf("%s\n", strerror(errno));
-       exit(-1);
-    }
-    */
+    // create a virtual uhid device
+    virtual_device = new uhid_device();
 
+    // define some variables
     struct input_event ev[64]; //input event
     //input_event event;
     int numevents;
@@ -247,14 +173,7 @@ void run() {
     int maxfd;
     int result = 0;
 
-    // make sure we have some input
-    if (device_list.size() == 0) {
-        printf("Please configure at least 1 device\n");
-        exit(1);
-    }
-
-    // create a virtual uhid device
-    virtual_device = new uhid_device();
+    printf("Running main loop...\n");
 
     // main loop
     while (1)
@@ -278,10 +197,8 @@ void run() {
             break;
         }
         
-        
         // Ensure that the current thread is ready to call the Python C API 
         PyGILState_STATE state = PyGILState_Ensure();
-
 
         // output what we have to the user
         for (int i = 0; i < device_list.size(); ++i) {
@@ -308,16 +225,20 @@ void run() {
         PyGILState_Release(state);
     }
 
+    // remove virtual device
+    delete virtual_device;
+
     // clean and close devices
     for (int i = 0; i < device_list.size(); ++i) {
         device_list[i]->close();
     }
-
-    delete virtual_device;
 }
+
 
 int main(int argc, char* argv[])
 {
+    // initialize devices etc..
+    initialize();
     run();
     return 0;
 }
@@ -327,6 +248,6 @@ BOOST_PYTHON_MODULE(macrokey)
     using namespace boost::python;
     def("send_event_to_virtual_device", send_event_to_virtual_device);
     def("set_py_callback", set_py_callback);
-    def("add_device", add_device);
+    def("open_device", open_device);
     def("run", run);
 }

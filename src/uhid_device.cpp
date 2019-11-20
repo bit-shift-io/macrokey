@@ -247,15 +247,15 @@ uhid_device::uhid_device()
     //struct pollfd pfds[2];
     int ret;
 
-    fprintf(stderr, "Open uhid-cdev %s\n", path);
+    fprintf(stderr, "Virtual Device: %s\n", path);
     fd = open(path, O_RDWR | O_CLOEXEC);
     if (fd < 0) {
-        fprintf(stderr, "Cannot open uhid-cdev %s: %m\n", path);
+        fprintf(stderr, "Virtual Device: failed, %s: %m\n", path);
         //return EXIT_FAILURE;
     }
 
     // create device
-    fprintf(stderr, "Create uhid device\n");
+    fprintf(stderr, "Virtual Device: create\n");
     ret = create();
     if (ret) {
         close(fd);

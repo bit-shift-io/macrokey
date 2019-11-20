@@ -12,45 +12,45 @@
                 "${workspaceRoot}",
                 "-DCMAKE_BUILD_TYPE=Debug"
             ],
-            "dependsOn":["cmake"],
+            "dependsOn": [
+                "cmake"
+            ],
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
             "presentation": {
-                "clear": true,   // clear terminal first
+                "clear": true,
                 "echo": true,
                 "reveal": "always",
                 "focus": false,
                 "panel": "shared"
             },
+            "problemMatcher": []
         },
         {
             "label": "build",
             "type": "shell",
-            "command": "cmake",
-            // use options.cwd property if the Makefile is not in the project root ${workspaceRoot} dir
+            "command": "make",
             "options": {
-                "cwd": "${workspaceRoot}"
+                "cwd": "${workspaceRoot}/build/"
             },
-            // start the build without prompting for task selection, use "group": "build" otherwise
             "group": {
                 "kind": "build",
                 "isDefault": true
             },
             "presentation": {
-                "clear": true,   // clear terminal first
+                "clear": true,
                 "echo": true,
                 "reveal": "always",
                 "focus": false,
                 "panel": "shared"
             },
-            // arg passing example: in this case is executed make QUIET=0
-            //"args": ["QUIET=0"],
-            // Use the standard less compilation problem matcher.
             "problemMatcher": {
                 "owner": "cpp",
-                "fileLocation": ["absolute"],
+                "fileLocation": [
+                    "absolute"
+                ],
                 "pattern": {
                     "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
                     "file": 1,

@@ -12,6 +12,10 @@ import macrokey
 import threading
 import sys
 
+# globals
+debug_enabled = False
+callbackInst = ""
+
 # https://github.com/spotify/linux/blob/master/include/linux/input.h
 EV_KEY = 1
 
@@ -98,6 +102,8 @@ class Default:
         if (p_type == EV_KEY):
             if (p_code == KEY_B):
                 macrokey.send_event_to_virtual_device(BTN_LEFT, p_value)
+
+        return
         
 # ------------------------------------------------------------------------------------------
 
@@ -116,13 +122,14 @@ def debug(p_type, p_code, p_value):
 
 
 def process_input(p_type, p_code, p_value):
+    global callbackInst
     debug(p_type, p_code, p_value)
     callbackInst.process_input(p_type, p_code, p_value)
     return
 
 
 def main():
-    debug_enabled = False
+    global callbackInst
     className = "Default"
     last_debug = ''
         
@@ -133,14 +140,22 @@ def main():
         print("Class not found: " + className)
         sys.exit(1)
     else:
-        print("Running with class: " + className)
+        print("Profile: " + className)
 
     callbackClass = getattr(sys.modules[__name__], className)    
     callbackInst = callbackClass()
 
     macrokey.set_py_callback(process_input)
-    macrokey.add_device("keyboard")
+
+    # add devices
+    macrokey.open_device("FootSwitch", True)
+    macrokey.open_device("HID 413d:2107 Keyboard", True)
+    macrokey.open_device("keyboard", False)
+
+    # start macrokey
     macrokey.run()
+
+    return
 
 
 if __name__ == '__main__':

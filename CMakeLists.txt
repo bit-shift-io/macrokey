@@ -53,6 +53,7 @@ set(SOURCES
 
 set(HEADERS
     src/uhid_device.h
+    src/event_device.h
 )
 
 

@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Build Debug Launch",
+            "name": "Build & Launch Debug",
             "type": "cppdbg",
             "request": "launch",
             "preLaunchTask": "build",
@@ -24,7 +24,7 @@
         },
 
         {
-            "name": "Debug Launch",
+            "name": "Launch Debug",
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/build/${workspaceFolderBasename}",
