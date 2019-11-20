@@ -23,12 +23,27 @@
 #include <map>
 #include <dirent.h>
 
-#include <uhid_device.h>
+#include "uhid_device.h"
+
+#include <boost/python.hpp>
 
 using namespace std;
 
 #define ID_FOOTSWITCH 0
 
+uhid_device* virtual_device = NULL;
+
+// python callback: https://stackoverflow.com/questions/7204664/pass-callback-from-python-to-c-using-boostpython
+
+// this is the variable that will hold a reference to the python function
+PyObject *py_callback;
+
+// the following function will invoked from python to populate the call back reference
+PyObject *set_py_callback(PyObject *callable)
+{
+    py_callback = callable;       /* Remember new callback */
+    return Py_None;
+}
 
 /**
  * Structure for input devices
@@ -154,7 +169,11 @@ void process_input(event_device *device, input_event *event, uhid_device* virtua
     if (device->id != ID_FOOTSWITCH) {
         return;
     }
+    
+    // invoke the python function
+    boost::python::call<void>(py_callback, event->type, event->code, event->value);
 
+/*
     if (event->type == EV_KEY) {
         /*
         if (event->value == EV_PRESSED)
@@ -162,7 +181,7 @@ void process_input(event_device *device, input_event *event, uhid_device* virtua
 
         if (event->value == EV_RELEASED)
             fprintf(stderr, "EV_RELEASED\n");
-        */
+        * /
         if (event->code == KEY_A) {
             virtual_device->send_event(BTN_RIGHT, event->value);
         }
@@ -174,11 +193,19 @@ void process_input(event_device *device, input_event *event, uhid_device* virtua
         if (event->code == KEY_C) {
             virtual_device->send_event(BTN_LEFT, event->value);
         }
-    }
+    }*/
 }
 
-int main(int argc, char* argv[])
-{
+void send_event_to_virtual_device(int key, int state) {
+    virtual_device->send_event(key, state);
+}
+
+void add_device(string p_device) {
+    const char *cstr = p_device.c_str();
+    printf("add dev: %s\n", cstr);
+}
+
+void run() {
     // check root permissions
     root_check();
 
@@ -187,12 +214,19 @@ int main(int argc, char* argv[])
     vector<event_device*> device_list;
 
     // open appropriate devices
+    // TODO: move this device code to python/commandline
     for (int i = 0; i < all_device_list.size(); ++i) {
         if (all_device_list[i]->name.find("FootSwitch") != string::npos) {
             all_device_list[i]->open(true);
             all_device_list[i]->id = ID_FOOTSWITCH;
             device_list.push_back(all_device_list[i]);
         }
+        // Brons' new foot pedal
+        if (all_device_list[i]->name.find("HID 413d:2107 Keyboard") != string::npos) {
+            all_device_list[i]->open(true);
+            all_device_list[i]->id = ID_FOOTSWITCH;
+            device_list.push_back(all_device_list[i]);
+        }        
     }
 
     // Daemonize process. Don't change working directory but redirect standard
@@ -220,7 +254,7 @@ int main(int argc, char* argv[])
     }
 
     // create a virtual uhid device
-    uhid_device* virtual_device = new uhid_device();
+    virtual_device = new uhid_device();
 
     // main loop
     while (1)
@@ -236,10 +270,18 @@ int main(int argc, char* argv[])
         }
 
         // read devices to see when it has input
-        result = select(maxfd+1, &fds, NULL, NULL, NULL);
+        timeval timeout;
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 100000; // 100 milliseconds
+        result = select(maxfd+1, &fds, NULL, NULL, &timeout);
         if (result == -1) {
             break;
         }
+        
+        
+        // Ensure that the current thread is ready to call the Python C API 
+        PyGILState_STATE state = PyGILState_Ensure();
+
 
         // output what we have to the user
         for (int i = 0; i < device_list.size(); ++i) {
@@ -258,6 +300,12 @@ int main(int argc, char* argv[])
                 process_input(device_list[i], &ev[j], virtual_device);
             }
         }
+        
+        // send a dummy event, just to keep the python timers ticking over
+        boost::python::call<void>(py_callback, 0, 0, 0);
+            
+        // release the global interpreter lock so other threads can resume execution
+        PyGILState_Release(state);
     }
 
     // clean and close devices
@@ -266,6 +314,19 @@ int main(int argc, char* argv[])
     }
 
     delete virtual_device;
+}
 
+int main(int argc, char* argv[])
+{
+    run();
     return 0;
+}
+
+BOOST_PYTHON_MODULE(macrokey)
+{
+    using namespace boost::python;
+    def("send_event_to_virtual_device", send_event_to_virtual_device);
+    def("set_py_callback", set_py_callback);
+    def("add_device", add_device);
+    def("run", run);
 }

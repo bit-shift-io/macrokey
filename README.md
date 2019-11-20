@@ -1,14 +1,15 @@
 # macrokey
-A simple c++ alternative to auto hotkey (AHK). 
+A simple c++/python alternative to auto hotkey (AHK). 
 
 # requirements:
 Linux
 
-# build and run:
-http://doc.qt.io/qt-5/qmake-running.html
+# run
+sudo ./macrokey.py {GameName}
 
-qmake -project
-qmake -makefile
-make
-sudo ./macrokey
+Where {GameName} currently can be:
+Default - use a default profile
+TheForest - specialised left clicking to support cutting down trees in The Forest
 
+# notes
+Running the python script will call "make", which should generate macrokey.so. If this step fails then errors will occur

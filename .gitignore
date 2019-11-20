@@ -14,5 +14,5 @@ Editor
 *.pro*
 .*
 *.user*
-macrokey
+*.so
 Makefile
