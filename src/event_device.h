@@ -10,20 +10,24 @@
 #include <linux/uhid.h>
 #include <fcntl.h>   // open
 #include <unistd.h>  // daemon, close
+#include <string>    // std::string, std::stoi
 
 class event_device {
 public:
     std::string device;
     std::string name;
-    //int id;
-
+    int id;
     bool lock;
     int fd; // filedevice
 
     event_device(std::string p_device) {
         fd = -1;
-        //id = -1;
+        id = -1;
         device = p_device;
+
+        // get the id number
+        size_t last_index = device.find_last_not_of("0123456789");
+        id = std::stoi(device.substr(last_index + 1));
 
         // read name
         char nm[256] = "???";
@@ -31,10 +35,9 @@ public:
         if (fd < 0)
             return;
         ioctl(fd, EVIOCGNAME(sizeof(nm)), nm);
-
         name = nm;
-        fprintf(stderr, "Device: %s, %s\n", device.c_str(), name.c_str());
 
+        fprintf(stderr, "Device: %i, %s, %s\n", id, device.c_str(), name.c_str());
         ::close(fd);
     }
 

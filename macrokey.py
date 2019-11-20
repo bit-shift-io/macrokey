@@ -15,6 +15,11 @@ import sys
 # globals
 debug_enabled = False
 callbackInst = ""
+last_debug = ''
+
+# device list
+dev_foot = -1
+dev_keyboard = -1
 
 # https://github.com/spotify/linux/blob/master/include/linux/input.h
 EV_KEY = 1
@@ -30,6 +35,8 @@ BTN_MIDDLE = 0x112
 KEY_A = 30
 KEY_B = 48
 KEY_C = 46
+KEY_CTRL = 29
+KEY_ALT = 56
 
 # Repeatedly click the left mouse
 class ClickRepeatTimer(threading.Thread):
@@ -68,8 +75,11 @@ class ClickRepeatTimer(threading.Thread):
 class Default:
     leftClickRepeatTimer = None
     rightClickRepeatTimer = None
+    ctrl_down = False
+    alt_down = False
+    key_repeat_map = {}
 
-    def process_input(self, p_type, p_code, p_value): 
+    def process_foot(self, p_type, p_code, p_value, p_device):
         # emulate repeating left mouse click
         if (p_type == EV_KEY and p_value == EV_PRESSED and p_code == KEY_A):
             if (self.leftClickRepeatTimer is None):
@@ -102,13 +112,41 @@ class Default:
         if (p_type == EV_KEY):
             if (p_code == KEY_B):
                 macrokey.send_event_to_virtual_device(BTN_LEFT, p_value)
+        
+        return
 
+
+    def process_keyboard(self, p_type, p_code, p_value, p_device):
+        if (p_type == EV_KEY and p_value == EV_PRESSED and p_code == KEY_CTRL):
+            self.ctrl_down = True
+        if (p_type == EV_KEY and p_value == EV_PRESSED and p_code == KEY_ALT):
+            self.alt_down = True
+        if (p_type == EV_KEY and p_value == EV_RELEASED and p_code == KEY_CTRL):
+            self.ctrl_down = False
+        if (p_type == EV_KEY and p_value == EV_RELEASED and p_code == KEY_ALT):
+            self.alt_down = False
+
+        # record last key
+        if (self.ctrl_down and self.alt_down):
+            print('timer')
+            if (p_code in self.key_repeat_map):
+                del self.key_repeat_map[p_code]
+            else:
+                self.key_repeat_map[p_code] = ClickRepeatTimer(p_code, 0.1, 0.1)
+        return
+
+
+    def process_input(self, p_type, p_code, p_value, p_device):
+        if (p_device == dev_foot):
+            self.process_foot(p_type, p_code, p_value, p_device)
+        if (p_device == dev_keyboard):
+            self.process_keyboard(p_type, p_code, p_value, p_device)   
         return
         
 # ------------------------------------------------------------------------------------------
 
 
-def debug(p_type, p_code, p_value):
+def debug(p_type, p_code, p_value, p_device):
     global debug_enabled, last_debug
     if not debug_enabled:
         return
@@ -121,17 +159,18 @@ def debug(p_type, p_code, p_value):
     return
 
 
-def process_input(p_type, p_code, p_value):
+def process_input(p_type, p_code, p_value, p_device):
     global callbackInst
-    debug(p_type, p_code, p_value)
-    callbackInst.process_input(p_type, p_code, p_value)
+    debug(p_type, p_code, p_value, p_device)
+    callbackInst.process_input(p_type, p_code, p_value, p_device)
     return
 
 
 def main():
     global callbackInst
+    global dev_foot
+    global dev_keyboard
     className = "Default"
-    last_debug = ''
         
     if (len(sys.argv) > 1):
         className = sys.argv[1]
@@ -148,9 +187,11 @@ def main():
     macrokey.set_py_callback(process_input)
 
     # add devices
-    macrokey.open_device("FootSwitch", True)
-    macrokey.open_device("HID 413d:2107 Keyboard", True)
-    macrokey.open_device("keyboard", False)
+    dev_foot = macrokey.open_device("FootSwitch", True)
+    if (dev_foot == -1):
+        dev_foot = macrokey.open_device("HID 413d:2107 Keyboard", True)
+
+    dev_keyboard = macrokey.open_device("keyboard", False)
 
     # start macrokey
     macrokey.run()

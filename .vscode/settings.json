@@ -2,7 +2,20 @@
     "files.associations": {
         "qqmlapplicationengine": "cpp",
         "*.ipp": "cpp",
-        "functional": "cpp"
+        "functional": "cpp",
+        "cctype": "cpp",
+        "cmath": "cpp",
+        "csignal": "cpp",
+        "cstdarg": "cpp",
+        "cstddef": "cpp",
+        "cstdio": "cpp",
+        "cstdlib": "cpp",
+        "cstring": "cpp",
+        "ctime": "cpp",
+        "cwchar": "cpp",
+        "cwctype": "cpp",
+        "condition_variable": "cpp",
+        "thread": "cpp"
     },
     // Hide the following
     "files.exclude": {

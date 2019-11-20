@@ -26,7 +26,6 @@
 
 using namespace std;
 
-//#define ID_FOOTSWITCH 0
 uhid_device* virtual_device = NULL; // the app create its own virtual device for playback/emulation of events
 vector<event_device*> system_device_list; // keep a list of system devices
 vector<event_device*> device_list; // keep a list of active devices
@@ -80,8 +79,7 @@ static vector<event_device*> get_system_devices() {
         int fd = -1;
         char name[256] = "???";
 
-        snprintf(fname, sizeof(fname),
-             "%s/%s", "/dev/input", namelist[i]->d_name);
+        snprintf(fname, sizeof(fname), "%s/%s", "/dev/input", namelist[i]->d_name);
 
         list.push_back(new event_device(fname));
     }
@@ -113,13 +111,8 @@ PyObject *set_py_callback(PyObject *callable)
  * process input event
  */
 void process_input(event_device *device, input_event *event, uhid_device* virtual_device){
-    /*
-    if (device->id != ID_FOOTSWITCH) {
-        return;
-    }*/
-    
     // invoke the python function
-    boost::python::call<void>(py_callback, event->type, event->code, event->value);
+    boost::python::call<void>(py_callback, event->type, event->code, event->value, device->id);
 }
 
 
@@ -130,9 +123,8 @@ void send_event_to_virtual_device(int key, int state) {
 /**
  * open a device for event reading
  **/
-void open_device(string p_device_name, bool p_exclusive_lock) {
+int open_device(string p_device_name, bool p_exclusive_lock) {
     const char *device_name = p_device_name.c_str();
-    bool found = false;
 
     // loop system devices
     for (int i = 0; i < system_device_list.size(); ++i) {
@@ -141,15 +133,13 @@ void open_device(string p_device_name, bool p_exclusive_lock) {
         if (system_device_list[i]->name.find(device_name) != string::npos) {
             printf("Device match: %s, %s\n", device_name, system_device_list[i]->name);
             system_device_list[i]->open(p_exclusive_lock);
-            //system_device_list[i]->id = ID_FOOTSWITCH;
             device_list.push_back(system_device_list[i]);
-            found = true;
+            return system_device_list[i]->id;
         }     
     }
 
-    if (!found) {
-        printf("Device match: none, %s\n", device_name);
-    }
+    printf("Device match: none, %s\n", device_name);
+    return -1;
 }
 
 
@@ -219,7 +209,7 @@ void run() {
         }
         
         // send a dummy event, just to keep the python timers ticking over
-        boost::python::call<void>(py_callback, 0, 0, 0);
+        boost::python::call<void>(py_callback, 0, 0, 0, -1);
             
         // release the global interpreter lock so other threads can resume execution
         PyGILState_Release(state);
