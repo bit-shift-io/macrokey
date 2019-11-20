@@ -3,21 +3,8 @@
  * a small utility to emulate key presses and monitor input devices
  * on linux
  *
-/** */
+ */
 
-//#include <map>
-//#include <fcntl.h>   // open
-//#include <string.h>  // strerror
-//#include <errno.h>
-//#include <assert.h>
-//#include <unistd.h>  // daemon, close
-//#include <linux/uhid.h>
-//#include <stdio.h>
-//#include <stdlib.h>
-//#include <stdint.h>
-//#include <linux/input.h>
-//#include <iostream>
-//#include <vector>
 #include <dirent.h>
 #include <boost/python.hpp>
 #include "src/event_device.h"
