@@ -2,6 +2,8 @@
 #define UHID_DEVICE_H
 
 /**
+ * Legacy code, left for reference
+ * 
  * Links:
  * https://cgit.freedesktop.org/~whot/evtest/tree/evtest.c
  * https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/Documentation/hid/uhid.txt?id=refs/tags/v4.10-rc3

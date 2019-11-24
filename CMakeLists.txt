@@ -48,11 +48,11 @@ include_directories(
 
 set(SOURCES
     src/main.cpp
-    src/uhid_device.cpp
+    src/uinput_device.cpp
 )
 
 set(HEADERS
-    src/uhid_device.h
+    src/uinput_device.h
     src/event_device.h
 )
 

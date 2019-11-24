@@ -8,12 +8,11 @@
 #include <dirent.h>
 #include <boost/python.hpp>
 #include "src/event_device.h"
-#include "src/uhid_device.h"
-
+#include "src/uinput_device.h"
 
 using namespace std;
 
-uhid_device* virtual_device = NULL; // the app create its own virtual device for playback/emulation of events
+uinput_device* virtual_device = NULL; // the app create its own virtual device for playback/emulation of events
 vector<event_device*> system_device_list; // keep a list of system devices
 vector<event_device*> device_list; // keep a list of active devices
 // python callback: https://stackoverflow.com/questions/7204664/pass-callback-from-python-to-c-using-boostpython
@@ -97,7 +96,7 @@ PyObject *set_py_callback(PyObject *callable)
 /**
  * process input event
  */
-void process_input(event_device *device, input_event *event, uhid_device* virtual_device){
+void process_input(event_device *device, input_event *event){
     // invoke the python function
     boost::python::call<void>(py_callback, event->type, event->code, event->value, device->id);
 }
@@ -138,7 +137,8 @@ void run() {
     }
 
     // create a virtual uhid device
-    virtual_device = new uhid_device();
+    virtual_device = new uinput_device();
+    virtual_device->open();
 
     // define some variables
     struct input_event ev[64]; //input event
@@ -191,7 +191,7 @@ void run() {
             // use the events!
             numevents = rd / size;
             for (int j = 0; j < numevents; ++j) {
-                process_input(device_list[i], &ev[j], virtual_device);
+                process_input(device_list[i], &ev[j]);
             }
         }
         
