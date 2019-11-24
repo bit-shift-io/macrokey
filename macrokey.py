@@ -204,7 +204,7 @@ def debug(p_type, p_code, p_value, p_device):
     if not debug_enabled:
         return
     
-    new_debug = "type: " + str(p_type) + " code:" + str(p_code) + " value: " + str(p_value)
+    new_debug = "type: " + str(p_type) + " code:" + str(p_code) + " value: " + str(p_value) + "dev: " + str(p_device)
     if last_debug != new_debug:
         print("Debug: " + new_debug)
         last_debug = new_debug
@@ -244,8 +244,15 @@ def main():
     if (dev_foot == -1):
         dev_foot = macrokey.open_device("HID 413d:2107 Keyboard", True)
 
-    dev_keyboard = macrokey.open_device("keyboard", False)
-
+    # need some regex eventually
+    dev_keyboard = macrokey.open_device("SONiX USB DEVICE", False)
+    if (dev_keyboard == -1):
+        dev_keyboard = macrokey.open_device("HOLTEK USB-HID Keyboard", False)
+    if (dev_keyboard == -1):
+        dev_keyboard = macrokey.open_device("keyboard", False)
+    if (dev_keyboard == -1):
+        dev_keyboard = macrokey.open_device("Keyboard", False)
+        
     # start macrokey
     macrokey.run()
 
