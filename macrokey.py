@@ -13,7 +13,7 @@ import threading
 import sys
 
 # globals
-debug_enabled = False
+debug_enabled = True
 callbackInst = ""
 last_debug = ''
 
@@ -61,9 +61,9 @@ class ClickRepeatTimer(threading.Thread):
     def run(self):
         while not self.event.is_set():
             print("Click ({})".format(self.key))
-            macrokey.send_event_to_virtual_device(self.key, EV_PRESSED)
+            macrokey.send_event_to_virtual_device(18, EV_PRESSED)
             self.event.wait(self.pressed_time)
-            macrokey.send_event_to_virtual_device(self.key, EV_RELEASED)
+            macrokey.send_event_to_virtual_device(18, EV_RELEASED)
             self.event.wait(self.released_time)
 
     def stop(self):
@@ -240,7 +240,7 @@ def main():
     macrokey.set_py_callback(process_input)
 
     # add devices
-    dev_foot = macrokey.open_device("FootSwitch", True)
+    dev_foot = macrokey.open_device("FootSwitch3-F1.8 Keyboard", True)
     if (dev_foot == -1):
         dev_foot = macrokey.open_device("HID 413d:2107 Keyboard", True)
 

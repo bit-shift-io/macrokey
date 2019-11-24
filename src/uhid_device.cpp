@@ -48,6 +48,17 @@
 
 #include <src/uhid_device.h>
 
+
+#include <pthread.h>
+#include <string.h>
+#include <stdio.h>
+#include <ctype.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+
 /*
  * HID Report Desciptor
  * We emulate a basic 3 button mouse with wheel and 3 keyboard LEDs. This is
@@ -109,6 +120,7 @@
  * This file should print the same information as showed above.
  */
 
+#if 0
 // report descriptor data
 static u_int8_t rdesc[] = {
     0x05, 0x01,	/* USAGE_PAGE (Generic Desktop) */
@@ -155,6 +167,129 @@ static u_int8_t rdesc[] = {
     0x75, 0x05,		/* REPORT_SIZE (5) */
     0x91, 0x01,		/* Output (Cnst,Var,Abs) */
     0xc0,		/* END_COLLECTION */
+};
+#endif
+
+/*
+// https://www.spinics.net/lists/linux-usb/msg165574.html
+// USB HID report descriptor
+// https://forums.obdev.at/viewtopic.php?t=10780
+static unsigned char rdesc[] = {
+	0x05, 0x01,
+	0x09, 0x06,
+	0xa1, 0x01,
+
+	0x05, 0x07,
+	0x19, 0xe0,
+	0x29, 0xe7,
+	0x15, 0x00,
+	0x25, 0x01,
+	0x75, 0x01,
+	0x95, 0x08,
+	0x81, 0x02,
+
+	0x95, 0x01,
+	0x75, 0x08,
+	0x81, 0x03,
+
+	0x95, 0x05,
+	0x75, 0x01,
+	0x05, 0x08,
+	0x19, 0x01,
+	0x29, 0x05,
+	0x91, 0x02,
+
+	0x95, 0x01,
+	0x75, 0x03,
+	0x91, 0x03,
+
+	0x95, 0x06,
+	0x75, 0x08,
+	0x15, 0x00,
+	0x25, 0x65,
+	0x05, 0x07,
+	0x19, 0x00,
+	0x29, 0x65,
+	0x81, 0x00,
+
+	0xc0
+};
+
+*/
+typedef struct{
+   unsigned char   reportID;
+    unsigned char   buttonMask;
+    unsigned char   dx;
+    unsigned char   dy;
+    unsigned char   dWheel;
+} mouse_report_t;
+
+typedef struct{
+   unsigned char   reportID;
+   unsigned char   modifier;
+   unsigned char   reserved;
+   unsigned char   keycode[5];
+} keyboard_report_t;
+
+#define ID_KEYBOARD 2
+#define ID_MOUSE 1
+
+static unsigned char rdesc[] = {
+   //45 47
+   0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)
+   0x09, 0x06,                    // USAGE (Keyboard)
+   0xa1, 0x01,                    // COLLECTION (Application)
+   0x85, (unsigned char)ID_KEYBOARD,    //   REPORT_ID (2)
+   0x05, 0x07,                    //   USAGE_PAGE (Keyboard)
+   0x19, 0xe0,                    //   USAGE_MINIMUM (Keyboard LeftControl)
+   0x29, 0xe7,                    //   USAGE_MAXIMUM (Keyboard Right GUI)
+   0x15, 0x00,                    //   LOGICAL_MINIMUM (0)
+   0x25, 0x01,                    //   LOGICAL_MAXIMUM (1)
+   0x95, 0x08,                    //   REPORT_COUNT (8)
+   0x75, 0x01,                    //   REPORT_SIZE (1)
+   0x81, 0x02,                    //   INPUT (Data,Var,Abs)
+   0x95, 0x01,                    //   REPORT_COUNT (1)
+   0x75, 0x08,                    //   REPORT_SIZE (8)
+   0x81, 0x01,                    //   INPUT (Cnst,Ary,Abs)
+   0x95, 0x05,                    //   REPORT_COUNT (6)
+   0x75, 0x08,                    //   REPORT_SIZE (8)
+   0x15, 0x00,                    //   LOGICAL_MINIMUM (0)
+   0x25, 0x65,                    //   LOGICAL_MAXIMUM (101)
+   0x05, 0x07,                    //   USAGE_PAGE (Keyboard)
+   0x19, 0x00,                    //   USAGE_MINIMUM (Reserved (no event indicated))
+   0x29, 0x65,                    //   USAGE_MAXIMUM (Keyboard Application)
+   0x81, 0x00,                    //   INPUT (Data,Ary,Abs)
+   0xc0,                           // END_COLLECTION
+   
+   //52 54
+   0x05, 0x01,                    // USAGE_PAGE (Generic Desktop)
+   0x09, 0x02,                    // USAGE (Mouse)
+   0xa1, 0x01,                    // COLLECTION (Application)
+   0x85, (unsigned char)ID_MOUSE,       //   REPORT_ID (1)
+   0x09, 0x01,                    //   USAGE (Pointer)
+   0xA1, 0x00,                    //   COLLECTION (Physical)
+   0x05, 0x09,                    //     USAGE_PAGE (Button)
+   0x19, 0x01,                    //     USAGE_MINIMUM
+   0x29, 0x03,                    //     USAGE_MAXIMUM
+   0x15, 0x00,                    //     LOGICAL_MINIMUM (0)
+   0x25, 0x01,                    //     LOGICAL_MAXIMUM (1)
+   0x95, 0x03,                    //     REPORT_COUNT (3)
+   0x75, 0x01,                    //     REPORT_SIZE (1)
+   0x81, 0x02,                    //     INPUT (Data,Var,Abs)
+   0x95, 0x01,                    //     REPORT_COUNT (1)
+   0x75, 0x05,                    //     REPORT_SIZE (5)
+   0x81, 0x03,                    //     INPUT (Const,Var,Abs)
+   0x05, 0x01,                    //     USAGE_PAGE (Generic Desktop)
+   0x09, 0x30,                    //     USAGE (X)
+   0x09, 0x31,                    //     USAGE (Y)
+   0x09, 0x38,                    //     USAGE (Wheel)
+   0x15, 0x81,                    //     LOGICAL_MINIMUM (-127)
+   0x25, 0x7F,                    //     LOGICAL_MAXIMUM (127)
+   0x75, 0x08,                    //     REPORT_SIZE (8)
+   0x95, 0x03,                    //     REPORT_COUNT (3)
+   0x81, 0x06,                    //     INPUT (Data,Var,Rel)
+   0xC0,                          //   END_COLLECTION
+   0xC0,                     // END COLLECTION   
 };
 
 int uhid_device::uhid_write(const struct uhid_event *ev)
@@ -212,6 +347,148 @@ int uhid_device::send_event(uhid_event *ev)
     return uhid_write(ev);
 }
 
+struct options {
+	const char    *opt;
+	unsigned char val;
+};
+
+static struct options mmod[] = {
+	{.opt = "--b1", .val = 0x01},
+	{.opt = "--b2", .val = 0x02},
+	{.opt = "--b3", .val = 0x04},
+	{.opt = NULL}
+};
+
+int mouse_fill_report(char report[8], char buf[BUF_LEN], int *hold)
+{
+	char *tok = strtok(buf, " ");
+	int mvt = 0;
+	int i = 0;
+	for (; tok != NULL; tok = strtok(NULL, " ")) {
+
+		if (strcmp(tok, "--quit") == 0)
+			return -1;
+
+		if (strcmp(tok, "--hold") == 0) {
+			*hold = 1;
+			continue;
+		}
+
+		for (i = 0; mmod[i].opt != NULL; i++)
+			if (strcmp(tok, mmod[i].opt) == 0) {
+				report[0] = report[0] | mmod[i].val;
+				break;
+			}
+		if (mmod[i].opt != NULL)
+			continue;
+
+		if (!(tok[0] == '-' && tok[1] == '-') && mvt < 2) {
+			errno = 0;
+			report[1 + mvt++] = (char)strtol(tok, NULL, 0);
+			if (errno != 0) {
+				fprintf(stderr, "Bad value:'%s'\n", tok);
+				report[1 + mvt--] = 0;
+			}
+			continue;
+		}
+
+		fprintf(stderr, "unknown option: %s\n", tok);
+	}
+	return 3;
+}
+
+static struct options kmod[] = {
+	{.opt = "--left-ctrl",		.val = 0x01},
+	{.opt = "--right-ctrl",		.val = 0x10},
+	{.opt = "--left-shift",		.val = 0x02},
+	{.opt = "--right-shift",	.val = 0x20},
+	{.opt = "--left-alt",		.val = 0x04},
+	{.opt = "--right-alt",		.val = 0x40},
+	{.opt = "--left-meta",		.val = 0x08},
+	{.opt = "--right-meta",		.val = 0x80},
+	{.opt = NULL}
+};
+
+static struct options kval[] = {
+	{.opt = "--return",	.val = 0x28},
+	{.opt = "--esc",	.val = 0x29},
+	{.opt = "--bckspc",	.val = 0x2a},
+	{.opt = "--tab",	.val = 0x2b},
+	{.opt = "--spacebar",	.val = 0x2c},
+	{.opt = "--caps-lock",	.val = 0x39},
+	{.opt = "--f1",		.val = 0x3a},
+	{.opt = "--f2",		.val = 0x3b},
+	{.opt = "--f3",		.val = 0x3c},
+	{.opt = "--f4",		.val = 0x3d},
+	{.opt = "--f5",		.val = 0x3e},
+	{.opt = "--f6",		.val = 0x3f},
+	{.opt = "--f7",		.val = 0x40},
+	{.opt = "--f8",		.val = 0x41},
+	{.opt = "--f9",		.val = 0x42},
+	{.opt = "--f10",	.val = 0x43},
+	{.opt = "--f11",	.val = 0x44},
+	{.opt = "--f12",	.val = 0x45},
+	{.opt = "--insert",	.val = 0x49},
+	{.opt = "--home",	.val = 0x4a},
+	{.opt = "--pageup",	.val = 0x4b},
+	{.opt = "--del",	.val = 0x4c},
+	{.opt = "--end",	.val = 0x4d},
+	{.opt = "--pagedown",	.val = 0x4e},
+	{.opt = "--right",	.val = 0x4f},
+	{.opt = "--left",	.val = 0x50},
+	{.opt = "--down",	.val = 0x51},
+	{.opt = "--kp-enter",	.val = 0x58},
+	{.opt = "--up",		.val = 0x52},
+	{.opt = "--num-lock",	.val = 0x53},
+	{.opt = NULL}
+};
+
+int keyboard_fill_report(char report[8], char buf[BUF_LEN], int *hold)
+{
+	char *tok = strtok(buf, " ");
+	int key = 0;
+	int i = 0;
+
+	for (; tok != NULL; tok = strtok(NULL, " ")) {
+
+		if (strcmp(tok, "--quit") == 0)
+			return -1;
+
+		if (strcmp(tok, "--hold") == 0) {
+			*hold = 1;
+			continue;
+		}
+
+		if (key < 6) {
+			for (i = 0; kval[i].opt != NULL; i++)
+				if (strcmp(tok, kval[i].opt) == 0) {
+					report[2 + key++] = kval[i].val;
+					break;
+				}
+			if (kval[i].opt != NULL)
+				continue;
+		}
+
+		if (key < 6)
+			if (islower(tok[0])) {
+				report[2 + key++] = (tok[0] - ('a' - 0x04));
+				continue;
+			}
+
+		for (i = 0; kmod[i].opt != NULL; i++)
+			if (strcmp(tok, kmod[i].opt) == 0) {
+				report[0] = report[0] | kmod[i].val;
+				break;
+			}
+		if (kmod[i].opt != NULL)
+			continue;
+
+		if (key < 6)
+			fprintf(stderr, "unknown option: %s\n", tok);
+	}
+	return 8;
+}
+
 /*
 UHID_INPUT2:
 Same as UHID_INPUT, but the data array is the last field of uhid_input2_req.
@@ -220,14 +497,133 @@ ev.u.input2.size + the part of the data array that matters), instead of
 the entire struct uhid_input2_req.
 */
 int uhid_device::send_event(int p_key, int p_state) {
+    printf("send_event: %i", p_key);
+
+    if (p_key == BTN_LEFT || p_key == BTN_RIGHT || p_key == BTN_MIDDLE) {
+        printf("trying to mouse emulate: %i\n", p_key);
+        
+        int buttonMask = 0;
+        switch (p_key) {
+        case BTN_LEFT:
+            buttonMask = 0x1;
+            break;
+
+        case BTN_RIGHT:
+            buttonMask = 0x2;
+            break;
+
+        case BTN_MIDDLE:
+            buttonMask = 0x4;
+            break;
+        }
+
+        mouse_report_t report;
+        const int size = sizeof(report);
+        memset(&report, 0x0, size);
+        report.reportID = ID_MOUSE;
+
+        if (p_state == EV_PRESSED)
+            report.buttonMask |= buttonMask;
+        else if (p_state == EV_RELEASED)
+            report.buttonMask &= ~buttonMask;
+
+        struct uhid_event ev;
+        ev.type = UHID_INPUT2;
+        ev.u.input2.size = size;
+        memcpy(ev.u.input2.data, &report, size);
+        return uhid_write(&ev);
+    }
+    else {
+        printf("trying to keyboard emulate: %i\n", p_key);
+
+        keyboard_report_t report;
+        const int size = sizeof(report);
+        memset(&report, 0x0, size);
+        report.reportID = ID_KEYBOARD;
+
+        if (p_state == EV_PRESSED)
+            report.keycode[0] |= p_key;
+        else if (p_state == EV_RELEASED)
+            report.keycode[0] &= ~p_key;
+
+        struct uhid_event ev;
+        ev.type = UHID_INPUT2;
+        ev.u.input2.size = size;
+        memcpy(ev.u.input2.data, &report, size);
+        return uhid_write(&ev);
+    }
+
+    return -1;
+
+#if 0
 
     switch (p_key) {
     case BTN_LEFT:
-        if (p_state == EV_PRESSED)
-            state.u.input2.data[1] |= 0x1;
-        else if (p_state == EV_RELEASED)
-            state.u.input2.data[1] &= ~0x1;
-        break;
+    case BTN_RIGHT:
+    case BTN_MIDDLE:
+        {
+
+            /*
+            char report[8];
+            memset(report, 0x0, sizeof(report));
+
+            if (p_state == EV_PRESSED)
+                report[0] |= 0x1;
+            else if (p_state == EV_RELEASED)
+                report[0] &= ~0x1;
+            */
+/*
+            int hold = 0;
+            char report[8];
+            char buf[BUF_LEN] = "--b1";
+            memset(report, 0x0, sizeof(report));
+            int to_send = mouse_fill_report(report, buf, &hold);
+
+            if (write(fd, report, to_send) != to_send) {
+				perror(filename);
+				return 5;
+			}
+*/
+/*
+            if (p_state == EV_PRESSED)
+                state.u.input2.data[1] |= p_key;
+            else if (p_state == EV_RELEASED)
+                state.u.input2.data[1] &= ~p_key;
+            break;
+*/
+
+/*
+            int hold = 0;
+            char report[8];
+            char buf[BUF_LEN] = "--spacebar";
+            memset(report, 0x0, sizeof(report));
+            int to_send = keyboard_fill_report(report, buf, &hold);
+*/
+
+            if (p_state == EV_PRESSED)
+                state.u.input2.data[1] |= 0x1;
+            else if (p_state == EV_RELEASED)
+                state.u.input2.data[1] &= ~0x1;
+
+
+            mouse_report_t report;
+            const int size = sizeof(report);
+            memset(&report, 0x0, size);
+            report.reportID = ID_MOUSE;
+
+            if (p_state == EV_PRESSED)
+                report.buttonMask |= 0x1;
+            else if (p_state == EV_RELEASED)
+                report.buttonMask &= ~0x1;
+
+            struct uhid_event ev;
+            ev.type = UHID_INPUT2;
+            ev.u.input2.size = size;
+            memcpy(ev.u.input2.data, &report, size);
+            return uhid_write(&ev);
+
+            break;
+        }
 
     case BTN_RIGHT:
         if (p_state == EV_PRESSED)
@@ -242,9 +638,30 @@ int uhid_device::send_event(int p_key, int p_state) {
         else if (p_state == EV_RELEASED)
             state.u.input2.data[1] &= ~0x4;
         break;
-    }
 
+    default: {
+            printf("trying to emulate: %i\n", p_key);
+
+            keyboard_report_t report;
+            const int size = sizeof(report);
+            memset(&report, 0x0, size);
+            report.reportID = ID_KEYBOARD;
+
+            if (p_state == EV_PRESSED)
+                report.keycode[0] |= p_key;
+            else if (p_state == EV_RELEASED)
+                report.keycode[0] &= ~p_key;
+
+            struct uhid_event ev;
+            ev.type = UHID_INPUT2;
+            ev.u.input2.size = size;
+            memcpy(ev.u.input2.data, &report, size);
+            return uhid_write(&ev);
+        }
+    }
+    
     return send_event(&state);
+#endif
 }
 
 uhid_device::uhid_device()

@@ -12,7 +12,7 @@
 
 int emit(int fd, int type, int code, int val)
 {
-    printf("emit:    fd: %i      type: %i      code: %i    val: %i\n", fd, type, code, val);
+    //printf("emit:    fd: %i      type: %i      code: %i    val: %i\n", fd, type, code, val);
 
    struct input_event ie;
 
@@ -87,7 +87,7 @@ void uinput_device::open() {
 }
 
 int uinput_device::send_event(int key, int state) {
-
+/*
     switch (key) {
     case BTN_LEFT:
     case BTN_RIGHT:
@@ -95,7 +95,7 @@ int uinput_device::send_event(int key, int state) {
         printf("mouse event!\n");
         break;
     }
-
+*/
 
     return emit(fd, EV_KEY, key /*eg. KEY_SPACE*/, state /* eg. EV_PRESSED */);
 }

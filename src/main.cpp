@@ -9,10 +9,11 @@
 #include <boost/python.hpp>
 #include "src/event_device.h"
 #include "src/uinput_device.h"
+#include "src/uhid_device.h"
 
 using namespace std;
 
-uinput_device* virtual_device = NULL; // the app create its own virtual device for playback/emulation of events
+uhid_device* virtual_device = NULL; // the app create its own virtual device for playback/emulation of events
 vector<event_device*> system_device_list; // keep a list of system devices
 vector<event_device*> device_list; // keep a list of active devices
 // python callback: https://stackoverflow.com/questions/7204664/pass-callback-from-python-to-c-using-boostpython
@@ -97,8 +98,20 @@ PyObject *set_py_callback(PyObject *callable)
  * process input event
  */
 void process_input(event_device *device, input_event *event){
+/*
+    // EV_MSC is keybord scancodes (we want these!)
+    // EV_KEY is linux keycodes (we don't want these! or anything else such as EV_SYN)
+    if (event->type != EV_MSC) {
+        return;
+    }
+    */
+
+    printf("c++ event:     type: %i      code: %i      value: %i    devId: %i\n", event->type, event->code, event->value, device->id);
+
     // invoke the python function
-    boost::python::call<void>(py_callback, event->type, event->code, event->value, device->id);
+    if (py_callback) {
+        boost::python::call<void>(py_callback, event->type, event->code, event->value, device->id);
+    }
 }
 
 
@@ -137,8 +150,8 @@ void run() {
     }
 
     // create a virtual uhid device
-    virtual_device = new uinput_device();
-    virtual_device->open();
+    virtual_device = new uhid_device();
+    //virtual_device->open();
 
     // define some variables
     struct input_event ev[64]; //input event
@@ -174,8 +187,11 @@ void run() {
             break;
         }
         
-        // Ensure that the current thread is ready to call the Python C API 
-        PyGILState_STATE state = PyGILState_Ensure();
+        // Ensure that the current thread is ready to call the Python C API
+        PyGILState_STATE state;
+        if (py_callback) {
+            state = PyGILState_Ensure();
+        }
 
         // output what we have to the user
         for (int i = 0; i < device_list.size(); ++i) {
@@ -195,11 +211,13 @@ void run() {
             }
         }
         
-        // send a dummy event, just to keep the python timers ticking over
-        boost::python::call<void>(py_callback, 0, 0, 0, -1);
-            
-        // release the global interpreter lock so other threads can resume execution
-        PyGILState_Release(state);
+        if (py_callback) {
+            // send a dummy event, just to keep the python timers ticking over
+            boost::python::call<void>(py_callback, 0, 0, 0, -1);
+                    
+            // release the global interpreter lock so other threads can resume execution
+            PyGILState_Release(state);
+        }
     }
 
     // remove virtual device
@@ -216,7 +234,19 @@ int main(int argc, char* argv[])
 {
     // initialize devices etc..
     initialize();
+    /*
+    virtual_device = new uhid_device();
+    send_event_to_virtual_device(KEY_A, EV_PRESSED);
+    send_event_to_virtual_device(KEY_A, EV_RELEASED);
+*/
+/*
+    send_event_to_virtual_device(18, EV_PRESSED);
+    */
+
+/*
+    open_device("HOLTEK USB-HID Keyboard", false);
     run();
+    */
     return 0;
 }
 

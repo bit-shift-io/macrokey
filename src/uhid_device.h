@@ -17,6 +17,8 @@
 
 #define LEFT_MOUSE 0
 
+#define BUF_LEN 512
+
 class uhid_device {
 private:
     int fd; // file device
@@ -28,6 +30,7 @@ private:
 public:
     uhid_device();
     ~uhid_device();
+
     int send_event(uhid_event *ev);
     int send_event(int key, int state);
 };
