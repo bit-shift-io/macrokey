@@ -1,5 +1,12 @@
 
 /*
+ * Links
+ * https://www.kernel.org/doc/html/latest/usb/gadget_hid.html
+ * https://github.com/aagallag/hid_gadget_test
+ * https://elixir.bootlin.com/linux/latest/source/drivers/hid/usbhid
+ */
+
+/*
  * UHID Example
  * This example emulates a basic 3 buttons mouse with wheel over UHID. Run this
  * program as root and then use the following keys to control the mouse:
