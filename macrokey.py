@@ -242,6 +242,8 @@ def main():
     # need some regex eventually
     dev_keyboard = macrokey.open_device("SONiX USB DEVICE", False)
     if (dev_keyboard == -1):
+        dev_keyboard = macrokey.open_device("/dev/input/event31", False)
+    if (dev_keyboard == -1):
         dev_keyboard = macrokey.open_device("HOLTEK USB-HID Keyboard", False)
     if (dev_keyboard == -1):
         dev_keyboard = macrokey.open_device("keyboard", False)

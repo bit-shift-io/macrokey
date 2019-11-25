@@ -70,6 +70,8 @@ static vector<event_device*> get_system_devices() {
         list.push_back(new event_device(fname));
     }
 
+    printf("\n");
+
     return list;
 }
 
@@ -126,9 +128,10 @@ int open_device(string p_device_name, bool p_exclusive_lock) {
     // loop system devices
     for (int i = 0; i < system_device_list.size(); ++i) {
 
-        // append device if matches
-        if (system_device_list[i]->name.find(device_name) != string::npos) {
-            printf("Device match: %s, %s\n", device_name, system_device_list[i]->name);
+        // append device if matches - either by name or by device
+        if (system_device_list[i]->name.find(device_name) != string::npos ||
+            system_device_list[i]->device.find(device_name) != string::npos) {
+            printf("Device match: %s, %s, %s\n", device_name, system_device_list[i]->device.c_str(), system_device_list[i]->name.c_str());
             system_device_list[i]->open(p_exclusive_lock);
             device_list.push_back(system_device_list[i]);
             return system_device_list[i]->id;
