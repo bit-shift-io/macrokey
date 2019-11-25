@@ -24,9 +24,9 @@ config = {
 def main():
     menu = {}
     menu['1'] = ['Build', 'build']
-    menu['2'] = ['Build debug', 'build_debug']
-    menu['3'] = ['Debug (GDB)', 'debug']
-    menu['4'] = ['Start', 'start']
+    menu['2'] = ['Start', 'start']
+    menu['9'] = ['Build debug', 'build_debug']
+    menu['0'] = ['Debug (GDB)', 'debug']
     menu['r'] = ['Requirements', 'requirements']
 
     print('\n********************')
@@ -50,7 +50,11 @@ def main():
 
 def start():
     run('cp ./build/libmacrokey.so macrokey.so')
-    run_sudo('python macrokey.py')
+    try:
+        run_sudo('python macrokey.py')
+    except KeyboardInterrupt:
+        log('exit')
+    
     return
 
 

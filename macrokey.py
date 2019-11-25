@@ -13,7 +13,7 @@ import threading
 import sys
 
 # globals
-debug_enabled = True
+debug_enabled = False
 callbackInst = ""
 last_debug = ''
 
@@ -32,6 +32,7 @@ BTN_LEFT = 0x110
 BTN_RIGHT = 0x111
 BTN_MIDDLE = 0x112
 
+# mapping for foot pedals
 KEY_A = 30
 KEY_B = 48
 KEY_C = 46
@@ -44,6 +45,12 @@ KEY_CAPSLOCK = 58
 KEY_TAB = 15
 KEY_META = 125 # win key
 KEY_ESC = 1
+
+
+def log(str=''):
+    print(str)
+    return
+
 
 # Repeatedly click the left mouse
 class ClickRepeatTimer(threading.Thread):
@@ -60,10 +67,9 @@ class ClickRepeatTimer(threading.Thread):
 
     def run(self):
         while not self.event.is_set():
-            print("Click ({})".format(self.key))
-            macrokey.send_event_to_virtual_device(18, EV_PRESSED)
+            macrokey.send_event_to_virtual_device(self.key, EV_PRESSED)
             self.event.wait(self.pressed_time)
-            macrokey.send_event_to_virtual_device(18, EV_RELEASED)
+            macrokey.send_event_to_virtual_device(self.key, EV_RELEASED)
             self.event.wait(self.released_time)
 
     def stop(self):
@@ -92,7 +98,6 @@ class Default:
         # emulate repeating left mouse click
         if (p_type == EV_KEY and p_value == EV_PRESSED and p_code == KEY_A):
             if (self.leftClickRepeatTimer is None):
-                print("Starting left click repeat timer")
                 self.leftClickRepeatTimer = ClickRepeatTimer(BTN_LEFT, 0.1, 0.1)
                 self.leftClickRepeatTimer.start()
 
@@ -100,13 +105,11 @@ class Default:
             if (self.leftClickRepeatTimer):
                 self.leftClickRepeatTimer.stop()
                 self.leftClickRepeatTimer = None
-                print("Stopping left click repeat timer")
 
 
         # emulate repeating right mouse click
         if (p_type == EV_KEY and p_value == EV_PRESSED and p_code == KEY_C):
             if (self.rightClickRepeatTimer is None):
-                print("Starting right click repeat timer")
                 self.rightClickRepeatTimer = ClickRepeatTimer(BTN_RIGHT, 0.1, 0.1)
                 self.rightClickRepeatTimer.start()
 
@@ -114,7 +117,6 @@ class Default:
             if (self.rightClickRepeatTimer):
                 self.rightClickRepeatTimer.stop()
                 self.rightClickRepeatTimer = None
-                print("Stopping right click repeat timer")
 
 
         # emulate holding left mouse hold
@@ -149,7 +151,6 @@ class Default:
                 if (p_code not in self.key_repeat_map):
                     self.key_repeat_map[p_code] = ClickRepeatTimer(p_code, 0.1, 0.1)
                     self.key_repeat_map[p_code].start()
-                    print('timer start')
 
         # timers end
         # with single key press
@@ -158,7 +159,6 @@ class Default:
             if (p_code in self.key_repeat_map):
                 self.key_repeat_map[p_code].stop()
                 del self.key_repeat_map[p_code]
-                print('timer end')
 
             # delete all timers
             # tilde key
@@ -166,7 +166,6 @@ class Default:
                 for key in self.key_repeat_map:
                     self.key_repeat_map[key].stop()
                 self.key_repeat_map = {}
-                print('timer end all')
 
             # toggle all timers on/off
             # caps lock
@@ -174,17 +173,13 @@ class Default:
                 self.capslock_down = not self.capslock_down
 
                 if (self.capslock_down):
-                    print('timer toggle off')
                     for key in self.key_repeat_map:
                         self.key_repeat_map[key].stop()
                 else:
-                    print('timer toggle on')
                     for key in self.key_repeat_map:
                         # need to recreate the timers first
                         self.key_repeat_map[key] = ClickRepeatTimer(key, 0.1, 0.1)
                         self.key_repeat_map[key].start()
-                    
-                
 
         return
 
@@ -206,7 +201,7 @@ def debug(p_type, p_code, p_value, p_device):
     
     new_debug = "type: " + str(p_type) + " code:" + str(p_code) + " value: " + str(p_value) + "dev: " + str(p_device)
     if last_debug != new_debug:
-        print("Debug: " + new_debug)
+        log("Debug: " + new_debug)
         last_debug = new_debug
     
     return
@@ -229,10 +224,10 @@ def main():
         className = sys.argv[1]
 
     if (not hasattr(sys.modules[__name__], className)):
-        print("Class not found: " + className)
+        log("Class not found: " + className)
         sys.exit(1)
     else:
-        print("Profile: " + className)
+        log("Profile: " + className)
 
     callbackClass = getattr(sys.modules[__name__], className)    
     callbackInst = callbackClass()
@@ -253,8 +248,11 @@ def main():
     if (dev_keyboard == -1):
         dev_keyboard = macrokey.open_device("Keyboard", False)
         
-    # start macrokey
-    macrokey.run()
+    try:
+        # start macrokey
+        macrokey.run()
+    except KeyboardInterrupt:
+        macrokey.done()
 
     return
 

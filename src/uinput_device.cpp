@@ -1,3 +1,13 @@
+/**
+ * Emulate a uinput device
+ * UHID is a pain!
+ * 
+ * Test inputs using evdevtest linux app
+ * 
+ * https://stackoverflow.com/questions/23092855/how-to-generate-keyboard-input-using-libevdev-in-c
+ */
+
+
 #include "uinput_device.h"
 #include <linux/uinput.h>
 #include <errno.h>
@@ -97,5 +107,7 @@ int uinput_device::send_event(int key, int state) {
     }
 */
 
-    return emit(fd, EV_KEY, key /*eg. KEY_SPACE*/, state /* eg. EV_PRESSED */);
+    emit(fd, EV_KEY, key /*eg. KEY_SPACE*/, state /* eg. EV_PRESSED */);
+    // send sync report
+    return emit(fd, EV_SYN, SYN_REPORT, 0);
 }

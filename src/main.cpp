@@ -9,11 +9,10 @@
 #include <boost/python.hpp>
 #include "src/event_device.h"
 #include "src/uinput_device.h"
-#include "src/uhid_device.h"
 
 using namespace std;
 
-uhid_device* virtual_device = NULL; // the app create its own virtual device for playback/emulation of events
+uinput_device* virtual_device = NULL; // the app create its own virtual device for playback/emulation of events
 vector<event_device*> system_device_list; // keep a list of system devices
 vector<event_device*> device_list; // keep a list of active devices
 // python callback: https://stackoverflow.com/questions/7204664/pass-callback-from-python-to-c-using-boostpython
@@ -98,15 +97,14 @@ PyObject *set_py_callback(PyObject *callable)
  * process input event
  */
 void process_input(event_device *device, input_event *event){
-/*
+    /*
     // EV_MSC is keybord scancodes (we want these!)
     // EV_KEY is linux keycodes (we don't want these! or anything else such as EV_SYN)
     if (event->type != EV_MSC) {
         return;
-    }
-    */
+    }*/
 
-    printf("c++ event:     type: %i      code: %i      value: %i    devId: %i\n", event->type, event->code, event->value, device->id);
+    //printf("c++ event:     type: %i      code: %i      value: %i    devId: %i\n", event->type, event->code, event->value, device->id);
 
     // invoke the python function
     if (py_callback) {
@@ -141,7 +139,6 @@ int open_device(string p_device_name, bool p_exclusive_lock) {
     return -1;
 }
 
-
 void run() {
     // make sure we have some input
     if (device_list.size() == 0) {
@@ -150,8 +147,8 @@ void run() {
     }
 
     // create a virtual uhid device
-    virtual_device = new uhid_device();
-    //virtual_device->open();
+    virtual_device = new uinput_device();
+    virtual_device->open();
 
     // define some variables
     struct input_event ev[64]; //input event
@@ -219,7 +216,9 @@ void run() {
             PyGILState_Release(state);
         }
     }
+}
 
+void done() {
     // remove virtual device
     delete virtual_device;
 
@@ -232,21 +231,8 @@ void run() {
 
 int main(int argc, char* argv[])
 {
+    // only in here on a debug build...
     // initialize devices etc..
-    initialize();
-    /*
-    virtual_device = new uhid_device();
-    send_event_to_virtual_device(KEY_A, EV_PRESSED);
-    send_event_to_virtual_device(KEY_A, EV_RELEASED);
-*/
-/*
-    send_event_to_virtual_device(18, EV_PRESSED);
-    */
-
-/*
-    open_device("HOLTEK USB-HID Keyboard", false);
-    run();
-    */
     return 0;
 }
 
@@ -257,4 +243,5 @@ BOOST_PYTHON_MODULE(macrokey)
     def("set_py_callback", set_py_callback);
     def("open_device", open_device);
     def("run", run);
+    def("done", done);
 }
