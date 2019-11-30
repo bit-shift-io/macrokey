@@ -16,6 +16,7 @@ import sys
 debug_enabled = False
 callbackInst = ""
 last_debug = ''
+right_click_hold = True # if false, right click taps the button, if true, right click is held
 
 # device list
 dev_foot = -1
@@ -109,12 +110,16 @@ class Default:
 
         # emulate repeating right mouse click
         if (p_type == EV_KEY and p_value == EV_PRESSED and p_code == KEY_C):
-            if (self.rightClickRepeatTimer is None):
+            if (right_click_hold):
+                macrokey.send_event_to_virtual_device(BTN_RIGHT, EV_PRESSED)
+            elif (self.rightClickRepeatTimer is None):
                 self.rightClickRepeatTimer = ClickRepeatTimer(BTN_RIGHT, 0.1, 0.1)
                 self.rightClickRepeatTimer.start()
 
         if (p_type == EV_KEY and p_value == EV_RELEASED and p_code == KEY_C):
-            if (self.rightClickRepeatTimer):
+            if (right_click_hold):
+                macrokey.send_event_to_virtual_device(BTN_RIGHT, EV_RELEASED)
+            elif (self.rightClickRepeatTimer):
                 self.rightClickRepeatTimer.stop()
                 self.rightClickRepeatTimer = None
 
