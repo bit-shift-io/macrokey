@@ -26,7 +26,7 @@ PyObject *py_callback;
 static void root_check() {
    if (geteuid() != 0) {
       printf("Must run as root\n");
-      exit(-1);
+      //exit(-1);
    }
 }
 
