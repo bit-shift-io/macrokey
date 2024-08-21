@@ -32,18 +32,19 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # libraries
+cmake_policy(SET CMP0167 NEW)
 find_package(Boost COMPONENTS python REQUIRED)
 message("Include dirs of boost: " ${Boost_INCLUDE_DIRS} )
 message("Libs of boost: " ${Boost_LIBRARIES} )
 
-find_package(PythonLibs REQUIRED)
-message("Include dirs of Python: " ${PYTHON_INCLUDE_DIRS} )
-message("Libs of Python: " ${PYTHON_LIBRARIES} )
+find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+message("Include dirs of Python: " ${Python3_INCLUDE_DIRS} )
+message("Libs of Python: " ${Python3_LIBRARIES} )
 
 
 include_directories(
     ${Boost_INCLUDE_DIRS}
-    ${PYTHON_INCLUDE_DIRS}
+    ${Python3_INCLUDE_DIRS}
 )
 
 set(SOURCES
@@ -83,5 +84,5 @@ endif(CMAKE_BUILD_TYPE STREQUAL "Debug")
 target_link_libraries(
     ${PROJECT_NAME}
     ${Boost_LIBRARIES}
-    ${PYTHON_LIBRARIES}
+    ${Python3_LIBRARIES}
 )
