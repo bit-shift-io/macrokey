@@ -9,6 +9,7 @@
 #include <boost/python.hpp>
 #include "src/event_device.h"
 #include "src/uinput_device.h"
+#include <vector>
 
 using namespace std;
 
@@ -25,7 +26,7 @@ PyObject *py_callback;
  */
 static void root_check() {
    if (geteuid() != 0) {
-      printf("Must run as root\n");
+      printf("Must run as root, or configure user groups\n");
       //exit(-1);
    }
 }

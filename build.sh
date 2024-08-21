@@ -19,6 +19,7 @@ function main {
     3) Build Debug
     4) Run Debug
     5) Install
+    6) Input User Group
     
     *) Any key to exit
     :" ans;
@@ -29,9 +30,16 @@ function main {
         3) fn_build_debug ;;
         4) fn_run_debug ;;
         5) fn_install ;;
+        6) fn_user_group ;;
         *) $SHELL ;;
     esac
     done
+}
+
+
+function fn_user_group {
+    sudo usermod -a -G input $USER
+    echo "please reboot to apply"
 }
 
 
@@ -60,8 +68,7 @@ function fn_build_debug {
 
 
 function fn_run_debug {
-    #sudo gdb {} -'.format(config['path']['debug']))
-    echo "TODO: fix"
+    sudo gdb ./build/macrokey
 }
 
 
