@@ -93,7 +93,7 @@ void uinput_device::open() {
     */
    sleep(1);
 
-   printf("uinput device opened with fd: %i\n", fd);
+   printf("Macrokey: uinput device opened with fd: %i\n", fd);
 }
 
 int uinput_device::send_event(int key, int state) {

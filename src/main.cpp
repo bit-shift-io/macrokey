@@ -164,7 +164,7 @@ void run() {
     int maxfd;
     int result = 0;
 
-    printf("Running main loop...\n");
+    printf("Macrokey: Running main loop...\n");
 
     // main loop
     while (1)
