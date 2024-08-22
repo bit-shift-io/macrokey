@@ -80,7 +80,7 @@ class Default:
     modifier_down = False
     key_repeat_map = {}
 
-    def process_foot(self, p_type, p_code, p_value, p_device):
+    def process_foot(self, p_type, p_code, p_value, p_device, p_name):
         # emulate repeating left mouse click
         if (p_type == EV_KEY and p_value == EV_PRESSED and p_code == KEY_A):
             if (self.leftClickRepeatTimer is None):
@@ -117,7 +117,7 @@ class Default:
         return
 
 
-    def process_keyboard(self, p_type, p_code, p_value, p_device):
+    def process_keyboard(self, p_type, p_code, p_value, p_device, p_name):
         # modifier keys
         if (p_type == EV_KEY and p_value == EV_PRESSED and p_code == KEY_CTRL):
             self.ctrl_down = True
@@ -174,11 +174,11 @@ class Default:
         return
 
 
-    def process_input(self, p_type, p_code, p_value, p_device):
+    def process_input(self, p_type, p_code, p_value, p_device, p_name):
         if (p_device == dev_foot):
-            self.process_foot(p_type, p_code, p_value, p_device)
+            self.process_foot(p_type, p_code, p_value, p_device, p_name)
         if (p_device == dev_keyboard):
-            self.process_keyboard(p_type, p_code, p_value, p_device)   
+            self.process_keyboard(p_type, p_code, p_value, p_device, p_name)   
         return
     
 

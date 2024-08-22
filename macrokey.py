@@ -22,12 +22,12 @@ def log(str=''):
     return
 
 
-def debug(p_type, p_code, p_value, p_device):
+def debug(p_type, p_code, p_value, p_device, p_name):
     global debug_enabled, last_debug
     if not debug_enabled:
         return
     
-    new_debug = "type: " + str(p_type) + " code:" + str(p_code) + " value: " + str(p_value) + "dev: " + str(p_device)
+    new_debug = "type: " + str(p_type) + " code: " + str(p_code) + " value: " + str(p_value) + " dev: " + str(p_device) + " name: " + str(p_name)
     if last_debug != new_debug:
         log("Debug: " + new_debug)
         last_debug = new_debug
@@ -35,10 +35,12 @@ def debug(p_type, p_code, p_value, p_device):
     return
 
 
-def process_input(p_type, p_code, p_value, p_device):
+def process_input(p_type, p_code, p_value, p_device, p_name):
+    if (p_device == -1):
+        return
     global callback_instance
-    debug(p_type, p_code, p_value, p_device)
-    callback_instance.process_input(p_type, p_code, p_value, p_device)
+    debug(p_type, p_code, p_value, p_device, p_name)
+    callback_instance.process_input(p_type, p_code, p_value, p_device, p_name)
     return
 
 

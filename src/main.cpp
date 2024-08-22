@@ -111,7 +111,7 @@ void process_input(event_device *device, input_event *event){
 
     // invoke the python function
     if (py_callback) {
-        boost::python::call<void>(py_callback, event->type, event->code, event->value, device->id);
+        boost::python::call<void>(py_callback, event->type, event->code, event->value, device->id, device->name);
     }
 }
 
@@ -214,7 +214,7 @@ void run() {
         
         if (py_callback) {
             // send a dummy event, just to keep the python timers ticking over
-            boost::python::call<void>(py_callback, 0, 0, 0, -1);
+            boost::python::call<void>(py_callback, 0, 0, 0, -1, "");
                     
             // release the global interpreter lock so other threads can resume execution
             PyGILState_Release(state);
