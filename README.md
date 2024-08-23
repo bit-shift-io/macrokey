@@ -7,13 +7,16 @@ Run ```./build.sh```
 ## Run
 Run ```./build.sh```
 or  
-```./macrokey.py {GameName}```
+```./macrokey.py {CLASS}```
 
-Where {GameName} currently can be:  
-Default - use a default profile  
-TheForest - specialised left clicking to support cutting down trees in The Forest  
+Where {CLASS} currently can be:  
+* Default - use a default profile  
+* Remote - used for multimedia remote remapping  
+* TheForest - specialised left clicking to support cutting down trees in The Forest  
 
 ## Default
 Ctrl + Alt + Key - starts a repeating timer for that key, press the key again without the modifiers and it will delete the timer.  
+
 ~ (Tilde) - deletes all repeat timers.  
+
 Caps Lock - toggles all repeat timers on/off.  
