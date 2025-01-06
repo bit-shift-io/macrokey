@@ -1,17 +1,37 @@
+// Import the log crate
+#[macro_use]
+extern crate log;
+
 extern crate uinput_tokio;
-use log::info;
 use env_logger::Builder;
-use std::{thread, time::Duration, io::Write};
+use std::{io::Write, thread::spawn};
 use std::env;
-use tokio::{self};
+use tokio::{self, task::JoinSet};
+//use futures::future::join_all;
 mod event_device;
 mod util;
-
-
+mod tasks;
+use tasks::*;
 
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() {
+    init_logger();
+    info!("== Start MacroKey ==");
+    util::check_permissions();
+    util::list_devices();
+    
+
+    //let event_devices = event_device::get_input_devices().await;
+
+    // set version
+    let mut set = JoinSet::new();
+    set.spawn(default::task());
+    set.spawn(test::task());
+    set.join_all().await;
+}
+
+fn init_logger() {
     env::set_var("RUST_LOG", "info");
     Builder::from_default_env()
         .format(|buf, record| {
@@ -20,33 +40,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             writeln!(buf, "{}", message)
         })
         .init();
-
-    info!("== Start MacroKey ==");
-
-    util::check_permissions();
-
-    event_device::get_system_devices().await;
-
-    let mut device = uinput_tokio::default()?
-        .name("test")?
-        .event(uinput_tokio::event::Keyboard::All)?
-        .create()
-        .await?;
-
-    thread::sleep(Duration::from_secs(1));
-
-    // device.click(&keyboard::Key::H).await?;
-    // device.click(&keyboard::Key::E).await?;
-    // device.click(&keyboard::Key::L).await?;
-    // device.click(&keyboard::Key::L).await?;
-    // device.click(&keyboard::Key::O).await?;
-    // device.click(&keyboard::Key::Space).await?;
-    // device.click(&keyboard::Key::W).await?;
-    // device.click(&keyboard::Key::O).await?;
-    // device.click(&keyboard::Key::R).await?;
-    // device.click(&keyboard::Key::L).await?;
-    // device.click(&keyboard::Key::D).await?;
-    // device.click(&keyboard::Key::Enter).await?;
-
-    device.synchronize().await
+    // let mut builder = Builder::from_default_env();
+    // builder.format_timestamp(None);
+    // builder.format_module_path(false);
+    // builder.format_level(true);
+    // builder.init();
 }

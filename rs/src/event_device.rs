@@ -1,4 +1,3 @@
-use log::info;
 use tokio::fs;
 use std::io::{Error, ErrorKind};
 use std::ffi::CStr;
@@ -11,18 +10,26 @@ use nix::fcntl::readlink;
 use nix::sys::stat::Mode;
 use std::str;
 use std::fmt;
+use nix::ioctl_write_int;
+use nix::errno::Errno;
+use evdev::{Device, Key};
 
 const INPUT_PATH: &str = "/dev/input/";
 const BY_ID_PATH: &str = "/dev/input/by-id/";
 
 ioctl_read!(evio_get_name, b'E', 0x06, [c_char; 256]);
 ioctl_read!(evio_get_phys, b'E', 0x07, [c_char; 256]);
+ioctl_write_int!(eviocgrab, b'E', 0x90);
 
-#[derive(Debug)]
+
+#[derive(Debug, PartialEq)]
 pub struct EventDevice {
-    name: Option<String>, // may have no name
-    path: String,
-    id: Option<String>, // may not have id
+    pub name: Option<String>, // may have no name
+    pub path: String,
+    pub lock_type: LockType,
+    //pub lock: bool,
+    pub file_device: i32,
+    //id: Option<String>, // may not have id
     //manufacturer: Option<String>, // may not have manufacturer
 }
 
@@ -56,7 +63,7 @@ impl EventDevice {
         close(fd).unwrap_or(());
 
         // Get device IDs from /dev/input/by-id/
-        let id = get_device_id(device_path).await?;
+        //let id = get_device_id(device_path).await?;
 
         // Extract the file name from the device path
         let path = Path::new(device_path)
@@ -68,12 +75,50 @@ impl EventDevice {
             let event_device = EventDevice {
                 name,
                 path,
-                id,
+                lock_type: LockType::None,
+                file_device: fd,
+                //id,
             };
     
             info!("{}", event_device);
     
             Ok(event_device)
+    }
+
+
+    pub fn open(&mut self, lock_type: LockType) {
+        info!("Opening device: {}", self.path);
+        self.lock_type = lock_type.clone();
+
+        // Open the device file
+        let fd = open(self.get_path().as_str(), OFlag::O_RDONLY, Mode::empty())
+            .map_err(|_| Error::new(ErrorKind::InvalidData, "Failed to open device"))
+            .unwrap();
+
+        self.file_device = fd;
+
+        // lock/grab all input
+        if lock_type == LockType::Lock || lock_type == LockType::Map {
+            let result = unsafe { eviocgrab(fd, true as u64) };
+            match result {
+                Ok(_) => info!("Exclusive access: SUCCESS"),
+                Err(Errno::EBUSY) => info!("Exclusive access: FAILURE - Device is busy"),
+                Err(e) => info!("Exclusive access: FAILURE - {:?}", e),
+            }
+        }
+    }
+
+    pub fn close(&mut self) {
+        info!("Closing device: {}", self.path);
+        close(self.file_device).unwrap_or(());
+    }
+
+    pub fn is_open(&self) -> bool {
+        self.file_device != -1
+    }
+
+    pub fn get_path(&self) -> String {
+        format!("{}{}", INPUT_PATH, self.path)
     }
 
 }
@@ -83,10 +128,10 @@ impl fmt::Display for EventDevice {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{} -> {} -> {}",
+            "{} -> {}",
             self.path,
-            self.name.clone().unwrap_or_else(|| "No Name".to_string()),
-            self.id.clone().unwrap_or_else(|| "No ID".to_string()),
+            self.name.clone().unwrap_or_else(|| "<No Name>".to_string()),
+            //self.id.clone().unwrap_or_else(|| "No ID".to_string()),
             //self.manufacturer.clone().unwrap_or_else(|| "No Manufacturer".to_string())
         )
     }
@@ -141,7 +186,7 @@ async fn is_event_device(entry: &fs::DirEntry) -> bool {
 }
 
 
-pub async fn get_system_devices() -> Vec<EventDevice> {
+pub async fn get_input_devices() -> Vec<EventDevice> {
     let mut list = Vec::new();
 
     let entries = match fs::read_dir(INPUT_PATH).await {
@@ -162,4 +207,12 @@ pub async fn get_system_devices() -> Vec<EventDevice> {
     }
 
     list
+}
+
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum LockType {
+    None, // dont lock device
+    Lock, // full lock of device
+    Map, // lock specific mapped keys
 }

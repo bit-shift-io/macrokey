@@ -1,22 +1,21 @@
 # macrokey
-A simple C++ & Python alternative to auto hotkey (AHK) for linux. 
+A simple rust alternative to auto hotkey (AHK) for linux. 
 
 ## Build/Install/Run
 Run ```./build.sh```
 
 ## Run
 Run ```./build.sh```
-or  
-```./macrokey.py {CLASS}```
 
-Where {CLASS} currently can be:  
-* Default - use a default profile  
-* Remote - used for multimedia remote remapping  
-* TheForest - specialised left clicking to support cutting down trees in The Forest  
-
-## Default
+## Default Task
 Ctrl + Alt + Key - starts a repeating timer for that key, press the key again without the modifiers and it will delete the timer.  
 
 ~ (Tilde) - deletes all repeat timers.  
 
 Caps Lock - toggles all repeat timers on/off.  
+
+## Virtual devices
+Live in ```/sys/devices/virtual/input```
+
+## Links
+https://github.com/emberian/evdev/tree/main/examples
