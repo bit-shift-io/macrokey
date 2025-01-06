@@ -11,4 +11,4 @@ tokio = "1.42.0"
 uinput-tokio = "0.1.36"
 
 [features]
-default = [ "nix/user", "nix/ioctl", "nix/fs", "nix/event" ]
+default = [ "nix/user", "nix/ioctl", "nix/fs", "nix/event", "nix/dir" ]
