@@ -1,10 +1,9 @@
 extern crate uinput_tokio;
 use log::info;
-
-use std::{thread, time::Duration};
-
+use env_logger::Builder;
+use std::{thread, time::Duration, io::Write};
+use std::env;
 use tokio::{self};
-
 mod event_device;
 mod util;
 
@@ -13,8 +12,14 @@ mod util;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    std::env::set_var("RUST_LOG", "info");
-    env_logger::init();
+    env::set_var("RUST_LOG", "info");
+    Builder::from_default_env()
+        .format(|buf, record| {
+            //let level = record.level();
+            let message = record.args();
+            writeln!(buf, "{}", message)
+        })
+        .init();
 
     info!("== Start MacroKey ==");
 
