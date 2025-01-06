@@ -19,6 +19,7 @@ async fn main() {
     let mut set = JoinSet::new();
     set.spawn(default::task());
     set.spawn(test::task());
+    set.spawn(remote::task());
     set.join_all().await;
 }
 

@@ -12,6 +12,6 @@ pub async fn task() {
     let mut events = device.into_event_stream().unwrap();
     loop {
         let ev = events.next_event().await.unwrap();
-        info!("{:?}", ev);
+        //info!("{:?}", ev);
     }
 }
