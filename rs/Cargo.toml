@@ -9,6 +9,7 @@ log = "0.4.22"
 nix = "0.29.0"
 tokio = "1.42.0"
 evdev = { version = "0.12.2", path = "../../evdev" }
+regex = "1.11.1"
 
 [features]
 default = [ 

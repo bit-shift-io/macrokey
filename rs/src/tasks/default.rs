@@ -1,4 +1,3 @@
-use evdev::KeyEvent;
 use evdev::{uinput::VirtualDeviceBuilder, AttributeSet, EventType, InputEvent, KeyCode};
 
 

@@ -21,9 +21,30 @@ pub fn list_devices() {
 pub fn get_device_by_name(name: &str) -> Option<evdev::Device> {
     let devices = evdev::enumerate().map(|t| t.1).collect::<Vec<_>>();
     for d in devices {
-        if d.name().unwrap_or("").contains(name) {
+        if d.name().unwrap_or("") == name {
             return Some(d);
         }
     }
     None
+}
+
+
+pub fn get_devices_by_regex(regex: &str) -> Vec<evdev::Device> {
+    let devices = evdev::enumerate().map(|t| t.1).collect::<Vec<_>>();
+    let regex = regex::Regex::new(regex).unwrap();
+    let mut matching_devices = Vec::new();
+
+    for d in devices {
+        if regex.is_match(d.name().unwrap_or("")) {
+            matching_devices.push(d);
+        }
+    }
+
+    matching_devices
+}
+
+
+pub fn log_device_keys(device: &evdev::Device) {
+    let keys = device.supported_keys().unwrap();
+    info!("\nDevice: {}\nKeys: {:?}", device.name().unwrap_or(""), keys);
 }
