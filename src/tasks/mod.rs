@@ -1,4 +1,3 @@
-pub mod default;
-pub mod template;
+pub mod auto_repeat;
 pub mod remote;
 pub mod monitor;

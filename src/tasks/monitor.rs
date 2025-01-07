@@ -3,6 +3,21 @@ use evdev::Device;
 
 const TASK_ID: &str = "LOG";
 
+/// Monitors and logs all events from all devices matching the given regex.
+///
+/// Events are logged at the INFO level with the format:
+/// `{device_name}: {event}`
+///
+/// The task will exit if no devices are found matching the given regex.
+///
+/// ## Arguments
+///
+/// * `device_name`: A regex to match the device name against.
+///
+/// ## Examples
+///
+/// Log all events from all devices with "" (anything) in their name:
+/// 
 pub async fn task(device_name: &str) {
     info!("{}", TASK_ID);
     let devices = util::get_devices_by_regex(device_name);

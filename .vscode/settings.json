@@ -1,0 +1,17 @@
+{
+    "rust-analyzer.checkOnSave.allTargets": false,
+    "rust-analyzer.procMacro.attributes.enable": true,
+    "editor.formatOnSave": false,
+    "cSpell.words": [
+        "baudrate",
+        "consts",
+        "defmt",
+        "mapf",
+    ],
+    "files.exclude": {
+        "target/": true
+    },
+    "debug.hideSlowPreLaunchWarning": true,
+    "cmake.ignoreCMakeListsMissing": true,
+
+}

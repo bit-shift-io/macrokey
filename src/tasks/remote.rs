@@ -1,7 +1,15 @@
-use std::process::Stdio;
-
-use evdev::{EventSummary, EventType, KeyCode};
-use tokio::{process::Command, task::JoinSet};
+use evdev::{
+    EventSummary,
+    EventType,
+    KeyCode,
+};
+use tokio::{
+    task::JoinSet,
+    time::{
+        Duration,
+        sleep,
+    },
+};
 use crate::util;
 
 const TASK_ID: &str = "REMOTE";
@@ -9,19 +17,25 @@ const TASK_ID: &str = "REMOTE";
 pub async fn task() {
     info!("{}", TASK_ID);
 
-    // this remote has multiple devices
-    // so we split this task into each device
-    let mut set = JoinSet::new();
-    set.spawn(task_system());
-    set.spawn(task_consumer());
-    set.spawn(task_keyboard());
-    set.spawn(task_mouse());
-    set.join_all().await;
+    loop {
+        let mut set = JoinSet::new();
+        set.spawn(task_system());
+        set.spawn(task_consumer());
+        set.spawn(task_keyboard());
+        set.spawn(task_mouse());
+        set.join_all().await;
+        
+        info!("{} error, retry in 60s", TASK_ID);
+        sleep(Duration::from_secs(60)).await;
+    }
 }
 
 
 pub async fn task_mouse() {
-    let device = util::get_device_by_name("Usb Audio Device Mouse").unwrap();
+    let device = match util::get_device_by_name("Usb Audio Device Mouse") {
+        Ok(d) => d,
+        Err(_) => return
+    };
     util::log_device_keys(&device);
     let mut events = device.into_event_stream().unwrap();
 
@@ -36,7 +50,10 @@ pub async fn task_mouse() {
 
 
 pub async fn task_keyboard() {
-    let mut device = util::get_device_by_name("Usb Audio Device").unwrap();
+    let device = match util::get_device_by_name("Usb Audio Device") {
+        Ok(d) => d,
+        Err(_) => return
+    };
     util::log_device_keys(&device);
     let mut events = device.into_event_stream().unwrap();
 
@@ -52,7 +69,10 @@ pub async fn task_keyboard() {
 
 
 pub async fn task_system() {
-    let mut device = util::get_device_by_name("Usb Audio Device System Control").unwrap();
+    let mut device = match util::get_device_by_name("Usb Audio Device System Control") {
+        Ok(d) => d,
+        Err(_) => return
+    };
     util::log_device_keys(&device);
     device.grab().unwrap();// lock
     let mut events = device.into_event_stream().unwrap();
@@ -73,9 +93,9 @@ async fn toggle_display() {
             let stdout = String::from_utf8_lossy(&output.stdout);
             info!("\n{}", stdout);
             if stdout.contains("power status: on") {
-                util::run_command("echo 'standby 0' | cec-client -s").await;
+                let _ = util::run_command("echo 'standby 0' | cec-client -s").await;
             } else {
-                util::run_command("echo 'on 0' | cec-client -s").await;
+                let _ = util::run_command("echo 'on 0' | cec-client -s").await;
             }
         }
         Err(e) => { info!("Error: {}", e); }
@@ -84,7 +104,10 @@ async fn toggle_display() {
 
 
 pub async fn task_consumer() {
-    let mut device = util::get_device_by_name("Usb Audio Device Consumer Control").unwrap();
+    let mut device = match util::get_device_by_name("Usb Audio Device Consumer Control") {
+        Ok(d) => d,
+        Err(_) => return
+    };
     util::log_device_keys(&device);
     device.grab().unwrap();// lock
     // todo remap these keys to something useful
