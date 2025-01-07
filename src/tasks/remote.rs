@@ -11,9 +11,6 @@ pub async fn task() {
 
     // this remote has multiple devices
     // so we split this task into each device
-    // usless devices:
-    // "Usb Audio Device"
-    // "Usb Audio Device Mouse"
     let mut set = JoinSet::new();
     set.spawn(task_system());
     set.spawn(task_consumer());
@@ -27,7 +24,7 @@ pub async fn task_mouse() {
     // the mouse device is the mouse
     let mut device = util::get_device_by_name("Usb Audio Device Mouse").unwrap();
     util::log_device_keys(&device);
-    device.grab().unwrap();// lock
+
     let mut events = device.into_event_stream().unwrap();
     loop {
         let ev = events.next_event().await.unwrap();
@@ -45,7 +42,7 @@ pub async fn task_keyboard() {
     // the keyboard device is the keyboard and numpad etc..
     let mut device = util::get_device_by_name("Usb Audio Device").unwrap();
     util::log_device_keys(&device);
-    device.grab().unwrap();// lock
+
     let mut events = device.into_event_stream().unwrap();
     loop {
         let ev = events.next_event().await.unwrap();
@@ -99,6 +96,7 @@ pub async fn task_consumer() {
     let mut device = util::get_device_by_name("Usb Audio Device Consumer Control").unwrap();
     util::log_device_keys(&device);
     device.grab().unwrap();// lock
+    // todo remap these keys to something useful
     let mut events = device.into_event_stream().unwrap();
     loop {
         let ev = events.next_event().await.unwrap();
