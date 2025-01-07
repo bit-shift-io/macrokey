@@ -1,4 +1,4 @@
-use evdev::{InputEventKind, Key};
+use evdev::{EventSummary, KeyCode};
 use tokio::task::JoinSet;
 use super::log;
 use crate::util;
@@ -33,8 +33,8 @@ pub async fn task_system() {
 
         // not a button press (we dont want release)
         if ev.value() != 1 { continue; }
-        match ev.kind() {
-            InputEventKind::Key(Key::KEY_POWER) => { info!("power KEY pressed!"); }
+        match ev.destructure() {
+            EventSummary::Key(_, KeyCode::KEY_POWER, _) => { info!("power KEY pressed!"); }
             _ => {info!("system: {:?}", ev);}
         }
     }
@@ -51,9 +51,9 @@ pub async fn task_consumer() {
 
         // not a button press (we dont want release)
         if ev.value() != 1 { continue; }
-        match ev.kind() {
-            InputEventKind::Key(Key::KEY_CONFIG) => { info!("config KEY pressed!"); }
-            InputEventKind::Key(Key::KEY_MAIL) => { info!("mail KEY pressed!"); }
+        match ev.destructure() {
+            EventSummary::Key(_, KeyCode::KEY_CONFIG, _) => { info!("config KEY pressed!"); }
+            EventSummary::Key(_, KeyCode::KEY_MAIL, _) => { info!("mail KEY pressed!"); }
             _ => {info!("consumer: {:?}", ev);}
         }
     }

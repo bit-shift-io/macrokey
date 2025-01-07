@@ -1,11 +1,9 @@
 use crate::util;
 
-const TASK_ID: &str = "TEST";
+pub async fn task(name: &str, device_name: &str) {
+    info!("{}", name);
 
-pub async fn task() {
-    info!("{}", TASK_ID);
-
-    let device = util::get_device_by_name("AT Translated Set 2 keyboard").unwrap();
+    let device = util::get_device_by_name(device_name).unwrap();
     //let device = Device::open("/dev/input/event10").unwrap();
 
     // event stream

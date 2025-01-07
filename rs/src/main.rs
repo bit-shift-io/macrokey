@@ -18,7 +18,7 @@ async fn main() {
     // tasks
     let mut set = JoinSet::new();
     set.spawn(default::task());
-    set.spawn(test::task());
+    set.spawn(template::task("template", "AT Translated Set 2 keyboard")); // test proxy fn
     set.spawn(remote::task());
     set.join_all().await;
 }

@@ -1,4 +1,4 @@
 pub mod default;
-pub mod test;
+pub mod template;
 pub mod remote;
 pub mod log;
