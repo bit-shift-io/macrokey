@@ -78,21 +78,15 @@ pub async fn task_system() {
 }
 
 async fn toggle_display() {
-    let output = Command::new("echo 'pow 0' | cec-client -s -d 1") // Replace with your command
-        //.arg("-l") // Example argument
-        .stdout(Stdio::piped()) // Capture standard output
-        .output() // Run the command
-        .await;
-
-    match output {
+     match util::run_command("echo 'pow 0' | cec-client -s -d 1").await {
         Ok(output) => { 
             let stdout = String::from_utf8_lossy(&output.stdout);
+            info!("\n{}", stdout);
+
             if stdout.contains("power status: on") {
-                info!("send cec off");
-                let command = "echo 'standby 0' | cec-client -s";
+                util::run_command("echo 'standby 0' | cec-client -s").await;
             } else {
-                info!("sens cec on");
-                let command = "echo 'on 0' | cec-client -s";
+                util::run_command("echo 'on 0' | cec-client -s").await;
             }
         }
         Err(e) => { info!("Error: {}", e); }

@@ -48,3 +48,11 @@ pub fn log_device_keys(device: &evdev::Device) {
     let keys = device.supported_keys().unwrap();
     info!("\nDevice: {}\nKeys: {:?}", device.name().unwrap_or(""), keys);
 }
+
+
+pub async fn run_command(cmd: &str) -> Result<std::process::Output, std::io::Error> {
+    tokio::process::Command::new("sh")
+    .args(&["-c", cmd])
+    .output()
+    .await
+}
