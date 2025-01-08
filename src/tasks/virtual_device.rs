@@ -1,32 +1,29 @@
 use evdev::{
     uinput::VirtualDeviceBuilder,
     AttributeSet,
-    EventType,
-    InputEvent,
     KeyCode,
-    KeyEvent,
 };
 use crate::signals;
 
-
 const TASK_ID: &str = "VIRTUAL DEVICE";
 
+/// Starts a virtual device and waits for events on the channel.
+///
+/// Creates a virtual device with all possible keys, including mouse buttons and gamepad keys.
+/// Then, it waits for events on the channel and emits them to the virtual device.
 pub async fn task() {
     info!("{}", TASK_ID);
 
-    let mut keys = AttributeSet::<KeyCode>::new();
-    keys.insert(KeyCode::BTN_DPAD_UP);
-    keys.insert(KeyCode::KEY_B);
+    // all possible keys, inc mouse buttons & gamepad
+    // let mut keys = AttributeSet::<KeyCode>::new();
+    // for i in 0..=0x2e7 { keys.insert(KeyCode::new(i)); }
 
-    // alternate method of creating an AttributeSet
-    // let test = AttributeSet::from_iter([
-    //     KeyCode::BTN_DPAD_UP,
-    //     KeyCode::BTN_DPAD_DOWN,
-    // ]);
+    // all possible keys using an iterator method
+    let keys = AttributeSet::from_iter((0..=0x2e7).map(KeyCode::new));
 
     // create a new device from an existing default
     let mut device = VirtualDeviceBuilder::new().unwrap()
-        .name("Repeat Keyboard")
+        .name("macrokey virtual device")
         .with_keys(&keys).unwrap()
         .build()
         .unwrap();
@@ -34,7 +31,7 @@ pub async fn task() {
     // display output device paths
     for path in device.enumerate_dev_nodes_blocking().unwrap() {
         let path = path.unwrap();
-        println!("Virtual device: {}", path.display());
+        println!("{}: {}", TASK_ID, path.display());
     }
 
     // get a lock on the receiver for the virtual device channel
@@ -43,6 +40,6 @@ pub async fn task() {
     // handle the event in a loop
     while let Some(event) = rx.recv().await {
         device.emit(&[*event]).unwrap();
-        info!("Sent code: {} pressed: {}", event.destructure().0.0, event.destructure().1);
+        info!("{} code: {} pressed: {}", TASK_ID, event.destructure().0.0, event.destructure().1);
     }
 }

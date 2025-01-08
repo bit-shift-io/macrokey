@@ -17,6 +17,10 @@ use crate::{
 
 const TASK_ID: &str = "REMOTE";
 
+/// Runs multiple remote control tasks as the device is split into multiple devices.
+///
+/// Each task is responsible for monitoring input events from the remote control and
+/// performing an action based on the event.
 pub async fn task() {
     info!("{}", TASK_ID);
     loop {

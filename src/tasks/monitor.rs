@@ -19,8 +19,7 @@ const TASK_ID: &str = "MONITOR";
 ///
 /// ## Examples
 ///
-/// Log all events from all devices with "" (anything) in their name:
-/// 
+/// Log all events from all devices with "" (anything) in their name.
 pub async fn task(device_name: &str) {
     info!("{}", TASK_ID);
     let devices = functions::get_devices_by_regex(device_name);

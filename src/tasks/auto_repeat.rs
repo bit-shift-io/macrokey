@@ -17,7 +17,7 @@ pub async fn task() {
     info!("{}", TASK_ID);
 
     loop {
-        task_test_send().await;
+        //task_test_send().await;
 
         info!("{} error, retry in 60s", TASK_ID);
         tokio::time::sleep(Duration::from_secs(60)).await;

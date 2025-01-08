@@ -21,7 +21,7 @@ async fn main() {
     info!("== Start MacroKey ==");
     functions::check_permissions();
     functions::list_devices();
-    
+    info!("\n== Start Tasks ==");
     // tasks
     let mut set = JoinSet::new();
     //set.spawn(monitor::task("")); // log all events
