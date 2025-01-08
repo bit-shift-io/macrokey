@@ -1,22 +1,24 @@
 use evdev::{
-    EventSummary,
-    EventType,
-    KeyCode,
-};
+        EventSummary,
+        EventType,
+        KeyCode,
+    };
 use tokio::{
-    task::JoinSet,
-    time::{
-        Duration,
-        sleep,
-    },
-};
-use crate::util;
+        task::JoinSet,
+        time::{
+            Duration,
+            sleep,
+        },
+    };
+use crate::{
+        functions,
+        key_event_type::KeyEventType,
+    };
 
 const TASK_ID: &str = "REMOTE";
 
 pub async fn task() {
     info!("{}", TASK_ID);
-
     loop {
         let mut set = JoinSet::new();
         set.spawn(task_system());
@@ -32,20 +34,12 @@ pub async fn task() {
 
 
 pub async fn task_mouse() {
-    let device = match util::get_device_by_name("Usb Audio Device Mouse") {
-        Ok(d) => d,
-        Err(_) => return
-    };
-    util::log_device_keys(&device);
+    let device = try_return!(functions::get_device_by_name("Usb Audio Device"));
+    functions::log_device_keys(&device);
     let mut events = device.into_event_stream().unwrap();
 
-    loop {
-        let ev = match events.next_event().await {
-            Ok(e) => e,
-            Err(_) => return
-        };
-        
-        if ev.value() != 1 || ev.event_type() != EventType::KEY { continue; }
+    while let Ok(ev) = events.next_event().await {
+        if ev.value() != KeyEventType::PRESSED || ev.event_type() != EventType::KEY { continue; }
         match ev.destructure() {
             _ => {info!("mouse: {:?}", ev);}
         }
@@ -54,44 +48,28 @@ pub async fn task_mouse() {
 
 
 pub async fn task_keyboard() {
-    let device = match util::get_device_by_name("Usb Audio Device") {
-        Ok(d) => d,
-        Err(_) => return
-    };
-    util::log_device_keys(&device);
+    let device = try_return!(functions::get_device_by_name("Usb Audio Device"));
+    functions::log_device_keys(&device);
     let mut events = device.into_event_stream().unwrap();
 
-    loop {
-        let ev = match events.next_event().await {
-            Ok(e) => e,
-            Err(_) => return
-        };
-
-        if ev.value() != 1 { continue; }
+    while let Ok(ev) = events.next_event().await {
+        if ev.value() != KeyEventType::PRESSED { continue; }
         match ev.destructure() {
             EventSummary::Key(_, KeyCode::KEY_F2, _) => { info!("f2 key!"); } // code 60
-            _ => {info!("keyboard: {:?}", ev);}
+            _ => { info!("keyboard: {:?}", ev); }
         }
     }
 }
 
 
 pub async fn task_system() {
-    let mut device = match util::get_device_by_name("Usb Audio Device System Control") {
-        Ok(d) => d,
-        Err(_) => return
-    };
-    util::log_device_keys(&device);
+    let mut device = try_return!(functions::get_device_by_name("Usb Audio Device System Control"));
+    functions::log_device_keys(&device);
     device.grab().unwrap();// lock
     let mut events = device.into_event_stream().unwrap();
 
-    loop {
-        let ev = match events.next_event().await {
-            Ok(e) => e,
-            Err(_) => return
-        };
-
-        if ev.value() != 1 { continue; }
+    while let Ok(ev) = events.next_event().await {
+        if ev.value() != KeyEventType::PRESSED { continue; }
         match ev.destructure() {
             EventSummary::Key(_, KeyCode::KEY_POWER, _) => { toggle_display().await; }
             _ => {info!("system: {:?}", ev);}
@@ -100,14 +78,14 @@ pub async fn task_system() {
 }
 
 async fn toggle_display() {
-     match util::run_command("echo 'pow 0' | cec-client -s -d 1").await {
+     match functions::run_command("echo 'pow 0' | cec-client -s -d 1").await {
         Ok(output) => { 
             let stdout = String::from_utf8_lossy(&output.stdout);
             info!("\n{}", stdout);
             if stdout.contains("power status: on") {
-                let _ = util::run_command("echo 'standby 0' | cec-client -s").await;
+                let _ = functions::run_command("echo 'standby 0' | cec-client -s").await;
             } else {
-                let _ = util::run_command("echo 'on 0' | cec-client -s").await;
+                let _ = functions::run_command("echo 'on 0' | cec-client -s").await;
             }
         }
         Err(e) => { info!("Error: {}", e); }
@@ -116,22 +94,14 @@ async fn toggle_display() {
 
 
 pub async fn task_consumer() {
-    let mut device = match util::get_device_by_name("Usb Audio Device Consumer Control") {
-        Ok(d) => d,
-        Err(_) => return
-    };
-    util::log_device_keys(&device);
+    let mut device = try_return!(functions::get_device_by_name("Usb Audio Device Consumer Control"));
+    functions::log_device_keys(&device);
     device.grab().unwrap();// lock
     // todo remap these keys to something useful
     let mut events = device.into_event_stream().unwrap();
 
-    loop {
-        let ev = match events.next_event().await {
-            Ok(e) => e,
-            Err(_) => return
-        };
-
-        if ev.value() != 1 { continue; }
+    while let Ok(ev) = events.next_event().await {
+        if ev.value() != KeyEventType::PRESSED { continue; }
         match ev.destructure() {
             EventSummary::Key(_, KeyCode::KEY_CONFIG, _) => { info!("config KEY pressed!"); }
             EventSummary::Key(_, KeyCode::KEY_MAIL, _) => { info!("mail KEY pressed!"); }

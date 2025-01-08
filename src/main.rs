@@ -1,23 +1,26 @@
 #[macro_use]
 extern crate log;
 
+#[macro_use]
+mod macros;
+
 use tokio::{
     self,
     task::JoinSet,
 };
 
-mod util;
+mod utils;
 mod tasks;
-mod signals;
 use tasks::*;
+use utils::*;
 
 
 #[tokio::main]
 async fn main() {
-    util::init_logger();
+    functions::init_logger();
     info!("== Start MacroKey ==");
-    util::check_permissions();
-    util::list_devices();
+    functions::check_permissions();
+    functions::list_devices();
     
     // tasks
     let mut set = JoinSet::new();
