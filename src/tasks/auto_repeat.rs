@@ -15,6 +15,7 @@ use tokio::{
     },
 };
 
+
 const TASK_ID: &str = "DEFAULT";
 
 pub async fn task() {
@@ -26,7 +27,7 @@ pub async fn task() {
 
         let mut set = JoinSet::new();
         set.spawn(task_virtual_device(rx));
-        set.spawn(task_teset_send(tx.clone()));
+        //set.spawn(task_test_send(tx.clone()));
         set.join_all().await;
 
         info!("{} error, retry in 60s", TASK_ID);
@@ -35,7 +36,7 @@ pub async fn task() {
 }
 
 
-pub async fn task_teset_send(mut tx: mpsc::Sender<KeyEvent>) {
+pub async fn task_test_send(mut tx: mpsc::Sender<KeyEvent>) {
     loop {
         let event = KeyEvent::new(KeyCode::BTN_DPAD_UP, 1);
         tx.send(event).await.unwrap();

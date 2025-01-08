@@ -40,7 +40,11 @@ pub async fn task_mouse() {
     let mut events = device.into_event_stream().unwrap();
 
     loop {
-        let ev = events.next_event().await.unwrap();
+        let ev = match events.next_event().await {
+            Ok(e) => e,
+            Err(_) => return
+        };
+        
         if ev.value() != 1 || ev.event_type() != EventType::KEY { continue; }
         match ev.destructure() {
             _ => {info!("mouse: {:?}", ev);}
@@ -58,7 +62,11 @@ pub async fn task_keyboard() {
     let mut events = device.into_event_stream().unwrap();
 
     loop {
-        let ev = events.next_event().await.unwrap();
+        let ev = match events.next_event().await {
+            Ok(e) => e,
+            Err(_) => return
+        };
+
         if ev.value() != 1 { continue; }
         match ev.destructure() {
             EventSummary::Key(_, KeyCode::KEY_F2, _) => { info!("f2 key!"); } // code 60
@@ -78,7 +86,11 @@ pub async fn task_system() {
     let mut events = device.into_event_stream().unwrap();
 
     loop {
-        let ev = events.next_event().await.unwrap();
+        let ev = match events.next_event().await {
+            Ok(e) => e,
+            Err(_) => return
+        };
+
         if ev.value() != 1 { continue; }
         match ev.destructure() {
             EventSummary::Key(_, KeyCode::KEY_POWER, _) => { toggle_display().await; }
@@ -114,9 +126,12 @@ pub async fn task_consumer() {
     let mut events = device.into_event_stream().unwrap();
 
     loop {
-        let ev = events.next_event().await.unwrap();
+        let ev = match events.next_event().await {
+            Ok(e) => e,
+            Err(_) => return
+        };
+
         if ev.value() != 1 { continue; }
-        info!("consumer: {:?}", ev);
         match ev.destructure() {
             EventSummary::Key(_, KeyCode::KEY_CONFIG, _) => { info!("config KEY pressed!"); }
             EventSummary::Key(_, KeyCode::KEY_MAIL, _) => { info!("mail KEY pressed!"); }
