@@ -8,10 +8,10 @@ use tokio::time::{
     };
 use crate::{
         key_event_type::KeyEventType, 
-        signals
+        signals,
     };
 
-const TASK_ID: &str = "DEFAULT";
+const TASK_ID: &str = "AUTO REPEAT";
 
 pub async fn task() {
     info!("{}", TASK_ID);

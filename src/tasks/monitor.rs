@@ -29,19 +29,17 @@ pub async fn task(device_name: &str) {
     }
 
     for device in devices {
-        let device_name = device.name().unwrap_or("Unknown").to_string();
-        tokio::spawn(log_device_events(device, device_name));
+        tokio::spawn(log_device_events(device));
     }
 }
 
 
-async fn log_device_events(device: Device, device_name: String) {
+async fn log_device_events(device: Device) {
+    let device_name = device.name().unwrap_or("<unnamed>").to_string();
     let mut events = device.into_event_stream().unwrap();
     while let Ok(ev) = events.next_event().await {
         if ev.value() != KeyEventType::PRESSED { continue; }
         info!("{}: {:?}", device_name, ev);
     }
-
-    // error handling
     info!("Error reading event from {}", device_name);
 }

@@ -37,8 +37,22 @@ pub fn list_devices() {
     devices.reverse();
     info!("Found {} devices:", devices.len());
     for (i, d) in devices.iter().enumerate() {
-        info!("{}: {}", i, d.name().unwrap_or("Unnamed device"));
+        info!("{}: {} {:?}", i, d.name().unwrap_or("<unnamed>"), get_combined_properties(d));
     }
+}
+
+
+/// Combines the properties and supported events of a device into a single vector.
+///
+/// ## Returns
+///
+/// A vector of strings containing the combined properties and supported
+/// events of the given device.
+pub fn get_combined_properties(device: &evdev::Device) -> Vec<String> {
+    let mut combined_properties: Vec<_> = device.properties().into_iter().map(|x| format!("{:?}", x)).collect();
+    let supported_events: Vec<_> = device.supported_events().into_iter().map(|x| format!("{:?}", x)).collect();
+    combined_properties.extend(supported_events);
+    combined_properties
 }
 
 
@@ -71,6 +85,33 @@ pub fn get_devices_by_regex(regex: &str) -> Vec<evdev::Device> {
     }
 
     matching_devices
+}
+
+
+/// Return a device where the given predicate is true.
+///
+/// ## Errors
+///
+/// Returns an `Err` if no device is found where the predicate is true.
+/// 
+/// ## Example
+///
+/// ```rust
+/// let device_name = "device_name";
+/// let properties = vec!["property1", "property2"];
+/// let device = get_device_by_predicate(|d| {
+///     d.name().unwrap_or("") == device_name && 
+///     properties.iter().all(|prop| get_combined_properties(d).contains(&prop.to_string()))
+/// })?;
+/// ```
+pub fn get_device_by_predicate(predicate: impl Fn(&evdev::Device) -> bool) -> Result<evdev::Device, std::io::Error> {
+    let devices = evdev::enumerate().map(|t| t.1).collect::<Vec<_>>();
+    for d in devices {
+        if predicate(&d) {
+            return Ok(d);
+        }
+    }
+    Err(std::io::Error::new(std::io::ErrorKind::NotFound, "Device not found"))
 }
 
 
