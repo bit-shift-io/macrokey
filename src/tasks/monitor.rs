@@ -39,7 +39,7 @@ async fn log_device_events(device: Device) {
     let mut events = device.into_event_stream().unwrap();
     while let Ok(ev) = events.next_event().await {
         if ev.value() != KeyEventType::PRESSED { continue; }
-        info!("{}: {:?}", device_name, ev);
+        info!("{}: {:?}", device_name, ev.destructure()); // use just ev if you want the number instead of the code
     }
     info!("Error reading event from {}", device_name);
 }

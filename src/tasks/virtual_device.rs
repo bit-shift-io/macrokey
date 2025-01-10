@@ -1,7 +1,8 @@
 use evdev::{
     uinput::VirtualDeviceBuilder,
     AttributeSet,
-    KeyCode,
+    KeyCode, 
+    RelativeAxisCode,
 };
 use crate::signals;
 
@@ -17,14 +18,38 @@ pub async fn task() {
     // all possible keys, inc mouse buttons & gamepad
     // let mut keys = AttributeSet::<KeyCode>::new();
     // for i in 0..=0x2e7 { keys.insert(KeyCode::new(i)); }
+  
+    // TODO: relativeaxiscode , add new()
 
     // all possible keys using an iterator method
     let keys = AttributeSet::from_iter((0..=0x2e7).map(KeyCode::new));
+    
+    // copy all axis
+    let relative_axes = AttributeSet::from_iter([
+        RelativeAxisCode::REL_X,
+        RelativeAxisCode::REL_Y,
+        RelativeAxisCode::REL_Z,
+        RelativeAxisCode::REL_RX,
+        RelativeAxisCode::REL_RY,
+        RelativeAxisCode::REL_RZ,
+        RelativeAxisCode::REL_HWHEEL,
+        RelativeAxisCode::REL_DIAL,
+        RelativeAxisCode::REL_WHEEL,
+        RelativeAxisCode::REL_MISC,
+        RelativeAxisCode::REL_RESERVED,
+        RelativeAxisCode::REL_WHEEL_HI_RES,
+        RelativeAxisCode::REL_HWHEEL_HI_RES,
+    ]);
+
+    // all possible relative axes using an inline closure
+    //let relative_axes = AttributeSet::from_iter((0..=0x0c).map(|code| RelativeAxisCode(code)));
 
     // create a new device from an existing default
     let mut device = VirtualDeviceBuilder::new().unwrap()
         .name("macrokey virtual device")
         .with_keys(&keys).unwrap()
+        .with_relative_axes(&relative_axes).unwrap()
+        //.with_absolute_axis(&absolute_axis).unwrap()
         .build()
         .unwrap();
 
@@ -39,7 +64,7 @@ pub async fn task() {
 
     // handle the event in a loop
     while let Some(event) = rx.recv().await {
-        device.emit(&[*event]).unwrap();
-        info!("{} code: {} pressed: {}", TASK_ID, event.destructure().0.0, event.destructure().1);
+        device.emit(&[event.clone()]).unwrap();
+        //info!("{}: {:?}", TASK_ID, event.destructure());
     }
 }

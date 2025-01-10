@@ -1,15 +1,16 @@
 use evdev::{
-        KeyCode,
-        KeyEvent,
-    };
+    KeyCode,
+    InputEvent,
+    EventType,
+};
 use tokio::time::{
-        sleep,
-        Duration
-    };
+    sleep,
+    Duration
+};
 use crate::{
-        key_event_type::KeyEventType, 
-        signals,
-    };
+    key_event_type::KeyEventType, 
+    signals,
+};
 
 const TASK_ID: &str = "AUTO REPEAT";
 
@@ -29,12 +30,12 @@ pub async fn task_test_send() {
     let tx = signals::get_virtual_device_tx().await;
 
     loop {
-        let event = KeyEvent::new(KeyCode::KEY_B, KeyEventType::PRESSED.into());
-        tx.send(event).await.unwrap();
+        let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_B.0, KeyEventType::PRESSED.into());
+        tx.send(ie).await.unwrap();
         sleep(Duration::from_secs(2)).await;
 
-        let event = KeyEvent::new(KeyCode::KEY_B, KeyEventType::RELEASED.into());
-        tx.send(event).await.unwrap();
+        let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_B.0, KeyEventType::RELEASED.into());
+        tx.send(ie).await.unwrap();
         sleep(Duration::from_secs(2)).await;
     }
 }

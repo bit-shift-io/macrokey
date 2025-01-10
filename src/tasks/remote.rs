@@ -1,19 +1,21 @@
 use evdev::{
-        EventSummary,
-        EventType,
-        KeyCode,
-    };
+    EventSummary,
+    EventType,
+    KeyCode,
+    InputEvent,
+};
 use tokio::{
-        task::JoinSet,
-        time::{
-            Duration,
-            sleep,
-        },
-    };
+    task::JoinSet,
+    time::{
+        Duration,
+        sleep,
+    },
+};
 use crate::{
-        functions,
-        key_event_type::KeyEventType,
-    };
+    functions,
+    key_event_type::KeyEventType,
+    signals,
+};
 
 const TASK_ID: &str = "REMOTE";
 
@@ -38,29 +40,50 @@ pub async fn task() {
 
 
 pub async fn task_mouse() {
-    let device = try_return!(functions::get_device_by_name("Usb Audio Device"));
+    let mut device = try_return!(functions::get_device_by_name("Usb Audio Device Mouse"));
     functions::log_device_keys(&device);
+    device.grab().unwrap();// lock
+    let tx = signals::get_virtual_device_tx().await;
     let mut events = device.into_event_stream().unwrap();
 
     while let Ok(ev) = events.next_event().await {
-        if ev.value() != KeyEventType::PRESSED || ev.event_type() != EventType::KEY { continue; }
         match ev.destructure() {
-            _ => {info!("mouse: {:?}", ev);}
+            // EventSummary::Key(_, KeyCode::BTN_RIGHT, _) => { // back icon 
+            //     let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_LEFTMETA.0, ev.value());        
+            //     tx.send(ie).await.unwrap();
+            // }
+            _ => { // passthrough
+                tx.send(ev).await.unwrap();
+                //info!("remote_mouse: {:?}", ev); // this give a number
+                info!("mouse: {:?}", ev.destructure()); // this give keycode
+            }
         }
     }
 }
 
 
 pub async fn task_keyboard() {
-    let device = try_return!(functions::get_device_by_name("Usb Audio Device"));
+    let mut device = try_return!(functions::get_device_by_name("Usb Audio Device"));
     functions::log_device_keys(&device);
+    device.grab().unwrap();// lock
+    let tx = signals::get_virtual_device_tx().await;
     let mut events = device.into_event_stream().unwrap();
 
     while let Ok(ev) = events.next_event().await {
         if ev.value() != KeyEventType::PRESSED { continue; }
         match ev.destructure() {
-            EventSummary::Key(_, KeyCode::KEY_F2, _) => { info!("f2 key!"); } // code 60
-            _ => { info!("keyboard: {:?}", ev); }
+            EventSummary::Key(_, KeyCode::KEY_F2, _) => { // windows key   
+                let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_LEFTMETA.0, ev.value());        
+                tx.send(ie).await.unwrap();
+            }
+            EventSummary::Key(_, KeyCode::KEY_COMPOSE, _) => { // windows key   
+                let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_LEFTMETA.0, ev.value());        
+                tx.send(ie).await.unwrap();
+            }
+            _ => {
+                //tx.send
+                info!("keyboard: {:?}", ev.destructure()); 
+            }
         }
     }
 }
@@ -76,7 +99,7 @@ pub async fn task_system() {
         if ev.value() != KeyEventType::PRESSED { continue; }
         match ev.destructure() {
             EventSummary::Key(_, KeyCode::KEY_POWER, _) => { toggle_display().await; }
-            _ => {info!("system: {:?}", ev);}
+            _ => {info!("system: {:?}", ev.destructure());}
         }
     }
 }
@@ -101,15 +124,26 @@ pub async fn task_consumer() {
     let mut device = try_return!(functions::get_device_by_name("Usb Audio Device Consumer Control"));
     functions::log_device_keys(&device);
     device.grab().unwrap();// lock
-    // todo remap these keys to something useful
+    let tx = signals::get_virtual_device_tx().await;
     let mut events = device.into_event_stream().unwrap();
 
     while let Ok(ev) = events.next_event().await {
-        if ev.value() != KeyEventType::PRESSED { continue; }
         match ev.destructure() {
-            EventSummary::Key(_, KeyCode::KEY_CONFIG, _) => { info!("config KEY pressed!"); }
-            EventSummary::Key(_, KeyCode::KEY_MAIL, _) => { info!("mail KEY pressed!"); }
-            _ => {info!("consumer: {:?}", ev);}
+            EventSummary::Key(_, KeyCode::KEY_CONFIG, _) => { // alt + tab
+                let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_LEFTMETA.0, ev.value());        
+                tx.send(ie).await.unwrap();}
+            EventSummary::Key(_, KeyCode::KEY_MAIL, _) => { // windows key
+                let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_LEFTMETA.0, ev.value()); 
+                tx.send(ie).await.unwrap();
+            }
+            // EventSummary::Key(_, KeyCode::KEY_HOMEPAGE, _) => { // home button
+            //     let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_HOMEPAGE.0, ev.value()); 
+            //     tx.send(ie).await.unwrap();
+            // }
+            _ => { // passthrough
+                info!("consumer: {:?}", ev.destructure());
+                tx.send(ev).await.unwrap();
+            }
         }
     }
 }

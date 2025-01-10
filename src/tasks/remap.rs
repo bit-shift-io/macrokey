@@ -1,6 +1,9 @@
 use evdev::{
+        EventSummary,
+        EventType,
+        InputEvent,
         KeyCode,
-        KeyEvent,
+        KeyEvent
     };
 use crate::{
         signals,
@@ -27,12 +30,17 @@ pub async fn task() {
     let tx = signals::get_virtual_device_tx().await;
     
     // monitor events
-    let device_name = device.name().unwrap_or("<unnamed>").to_string();
     let mut events = device.into_event_stream().unwrap();
     while let Ok(ev) = events.next_event().await {
-        info!("{}: {:?}", device_name, ev);
-        // recreate event as key and pass to virtual device
-        let new_event = KeyEvent::new(KeyCode::new(ev.code()), ev.value());
-        tx.send(new_event).await.unwrap();
+        
+        match ev.destructure() {
+            EventSummary::Key(_, KeyCode::KEY_Z, _) => { // z -> windows
+                let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_LEFTMETA.0, ev.value());
+                tx.send(ie).await.unwrap();
+            }
+            _ => { // passthrough
+                tx.send(ev).await.unwrap();
+            }
+        }
     }
 }
