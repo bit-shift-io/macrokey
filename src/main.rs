@@ -24,9 +24,9 @@ async fn main() {
     info!("\n== Start Tasks ==");
     // tasks
     let mut set = JoinSet::new();
+    //set.spawn(test::task()); // for testing code
     //set.spawn(monitor::task("")); // log all events
-    //set.spawn(auto_repeat::task());
-    //set.spawn(remap::task());
+    set.spawn(auto_repeat::task());
     set.spawn(remote::task());
     set.spawn(virtual_device::task());
     set.join_all().await;
