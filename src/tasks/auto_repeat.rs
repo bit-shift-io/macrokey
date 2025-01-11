@@ -22,8 +22,8 @@ use crate::{
 
 const TASK_ID: &str = "AUTO REPEAT";
 
-struct TaskState {
-    modifier_enabled: bool,
+#[derive(Debug)]
+struct State {
     alt_pressed: bool,
     ctrl_pressed: bool,
     shift_pressed: bool,
@@ -32,10 +32,9 @@ struct TaskState {
     grave_pressed: bool,
 }
 
-impl TaskState {
+impl State {
     fn new() -> Self {
-        TaskState {
-            modifier_enabled: false,
+        State {
             alt_pressed: false,
             ctrl_pressed: false,
             shift_pressed: false,
@@ -45,47 +44,16 @@ impl TaskState {
         }
     }
 
-    fn set_alt_pressed(&mut self, pressed: bool) {
-        self.alt_pressed = pressed;
-        self.check_modifier();
-    }
-
-    fn set_ctrl_pressed(&mut self, pressed: bool) {
-        self.ctrl_pressed = pressed;
-        self.check_modifier();
-    }
-
-    fn set_shift_pressed(&mut self, pressed: bool) {
-        self.shift_pressed = pressed;
-        self.check_modifier();
-    }
-
-    fn set_capslock_pressed(&mut self, pressed: bool) {
-        self.capslock_pressed = pressed;
-        self.check_modifier();
-    }
-
-    fn set_meta_pressed(&mut self, pressed: bool) {
-        self.meta_pressed = pressed;
-        self.check_modifier();
-    }
-
-    fn set_grave_pressed(&mut self, pressed: bool) {
-        self.grave_pressed = pressed;
-    }
-
-    fn check_modifier(&mut self) {
-        if self.ctrl_pressed && self.alt_pressed { self.modifier_enabled = true; } 
-        else { self.modifier_enabled = false; }
+    fn is_modifier_pressed(&mut self) -> bool {
+        self.ctrl_pressed && self.alt_pressed
     }
 }
 
-static TASK_STATE: Lazy<Mutex<TaskState>> = Lazy::new(|| Mutex::new(TaskState::new()));
+static STATE: Lazy<Mutex<State>> = Lazy::new(|| Mutex::new(State::new()));
 
 
 pub async fn task() {
     info!("{}", TASK_ID);
-
 
     loop {
         let devices = functions::get_devices_by_regex("keyboard");
@@ -106,48 +74,53 @@ pub async fn task() {
 }
 
 
-async fn process_input(ev: InputEvent, tx: &tokio::sync::mpsc::Sender<InputEvent>) -> () {
-    let mut task_state = TASK_STATE.lock().await;
+async fn process_input(ev: InputEvent) -> () {
+    let mut state = STATE.lock().await;
 
     // log
     if ev.event_type() == EventType::KEY && ev.value() == KeyEventType::PRESSED { info!("{:?}", ev.destructure()); };
 
     // process
     match ev.destructure() {
-        EventSummary::Key(_, KeyCode::KEY_LEFTALT | KeyCode::KEY_RIGHTALT, _) => { task_state.set_alt_pressed(true); } // alt
-        EventSummary::Key(_, KeyCode::KEY_LEFTCTRL | KeyCode::KEY_RIGHTCTRL, _) => { task_state.set_ctrl_pressed(true); } // ctl
-        EventSummary::Key(_, KeyCode::KEY_LEFTMETA | KeyCode::KEY_RIGHTMETA, _) => {task_state.set_meta_pressed(true); } // meta
-        EventSummary::Key(_, KeyCode::KEY_LEFTSHIFT | KeyCode::KEY_RIGHTSHIFT, _) => { task_state.set_shift_pressed(true); } // shift
-        EventSummary::Key(_, KeyCode::KEY_CAPSLOCK, _) => { task_state.set_capslock_pressed(true); } // caps lock
-        EventSummary::Key(_, KeyCode::KEY_GRAVE, _) => { task_state.set_grave_pressed(true); } // ~ key
-        _ => { } // no lock -> no passthrough
+        EventSummary::Key(_, KeyCode::KEY_LEFTALT | KeyCode::KEY_RIGHTALT, value) => { state.alt_pressed = value == KeyEventType::PRESSED || value == KeyEventType::REPEAT; } // alt
+        EventSummary::Key(_, KeyCode::KEY_LEFTCTRL | KeyCode::KEY_RIGHTCTRL, value) => { state.ctrl_pressed = value == KeyEventType::PRESSED || value == KeyEventType::REPEAT; } // ctl
+        EventSummary::Key(_, KeyCode::KEY_LEFTMETA | KeyCode::KEY_RIGHTMETA, value) => {state.meta_pressed = value == KeyEventType::PRESSED || value == KeyEventType::REPEAT; } // meta
+        EventSummary::Key(_, KeyCode::KEY_LEFTSHIFT | KeyCode::KEY_RIGHTSHIFT, value) => { state.shift_pressed = value == KeyEventType::PRESSED || value == KeyEventType::REPEAT; } // shift
+        EventSummary::Key(_, KeyCode::KEY_CAPSLOCK, value) => { state.capslock_pressed = value == KeyEventType::PRESSED || value == KeyEventType::REPEAT; } // caps lock
+        EventSummary::Key(_, KeyCode::KEY_GRAVE, value) => { state.grave_pressed = value == KeyEventType::PRESSED || value == KeyEventType::REPEAT; } // ~ key
+        _ => { return } // no lock -> no passthrough
+    }
+
+    // spawn task
+    if state.is_modifier_pressed() {
+        info!("{}: modifier!!", TASK_ID);
+        //let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_B.0, KeyEventType::PRESSED.into());
+        //tokio::spawn(repeat_timer(ie));
     }
 }
 
 
 async fn capture_events(device: Device) {
-    //let mut device = try_return!(functions::get_device_by_name(device_name));
     functions::log_device_keys(&device);
-    //device.grab().unwrap(); // lock
-    let tx = signals::get_virtual_device_tx().await;
     let mut events = device.into_event_stream().unwrap();
     while let Ok(ev) = events.next_event().await {
-        process_input(ev, &tx).await;
+        process_input(ev).await;
     }
 }
 
 
-pub async fn repeat_timer() {
+pub async fn repeat_timer(ie: InputEvent) {
     let pressed_time = 100; //ms
     let released_time = 350; //ms
     let tx = signals::get_virtual_device_tx().await;
 
     loop {
-        let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_B.0, KeyEventType::PRESSED.into());
+        // todo copy InputEvent and modify
+        //let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_B.0, KeyEventType::PRESSED.into());
         tx.send(ie).await.unwrap();
         sleep(Duration::from_secs(pressed_time)).await;
 
-        let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_B.0, KeyEventType::RELEASED.into());
+        //let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_B.0, KeyEventType::RELEASED.into());
         tx.send(ie).await.unwrap();
         sleep(Duration::from_secs(released_time)).await;
     }
