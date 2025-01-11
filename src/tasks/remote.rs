@@ -68,10 +68,10 @@ async fn process_input(id: ID, ev: InputEvent, tx: &tokio::sync::mpsc::Sender<In
             tx.send(ie).await.unwrap();
         }
         EventSummary::Key(_, KeyCode::KEY_CONFIG, _) => { // media icon -> browser
-            let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_LEFTMETA.0, ev.value());        
+            let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_WWW.0, ev.value());        
             tx.send(ie).await.unwrap();}
         EventSummary::Key(_, KeyCode::KEY_MAIL, _) => { // exclamation mark icon -> atl + tab
-            let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_LEFTMETA.0, ev.value()); 
+            let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_SEARCH.0, ev.value()); 
             tx.send(ie).await.unwrap();
         }
         _ => { tx.send(ev).await.unwrap(); } // passthrough
