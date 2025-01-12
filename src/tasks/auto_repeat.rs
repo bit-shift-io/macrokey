@@ -4,11 +4,13 @@ use evdev::{
     EventSummary,
     InputEvent, 
     KeyCode,
-    AttributeSet,
     LedCode,
 };
 use tokio::{
-    sync::Mutex,
+    sync::{
+        Mutex,
+        mpsc,
+    },
     task::{
         JoinSet,
         JoinHandle,
@@ -19,7 +21,13 @@ use tokio::{
     }
 };
 use once_cell::sync::Lazy;
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::{
+        Arc, 
+        Condvar
+    },
+};
 use crate::{
     functions, 
     key_event_type::KeyEventType, 
@@ -35,6 +43,7 @@ struct State {
     capslock_pressed: bool,
     //meta_pressed: bool,
     active_events: HashMap<KeyCode, JoinHandle<()>>,
+    //control_channel: (mpsc::Sender<bool>, mpsc::Receiver<bool>),
 }
 
 impl State {
@@ -45,6 +54,7 @@ impl State {
             capslock_pressed: false,
             //meta_pressed: false,
             active_events: HashMap::new(),
+            //control_channel: mpsc::channel(1),
         }
     }
 
@@ -131,6 +141,18 @@ impl State {
         }
         self.active_events.clear();
     }
+
+    fn pause_all_active_events(&mut self) {
+        for handle in self.active_events.values() {
+            handle.abort();
+        }
+    }
+
+    fn resume_all_active_events(&mut self) {
+        for key in self.active_events.keys() {
+            //tokio::spawn(repeat_event(ev));
+        }
+    }
 }
 
 static STATE: Lazy<Mutex<State>> = Lazy::new(|| Mutex::new(State::new()));
@@ -192,15 +214,12 @@ async fn process_input(ev: InputEvent) -> () {
 
         // toggle timers on/off
         if state.is_toggle_key(ev) {
-            //info!("{}: toggle!", TASK_ID);
-            //state.capslock_pressed = !state.capslock_pressed;
-
             if state.is_toggle_pressed() {
-                //info!("toggle pause");
-                //state.pause_all_active_events();
+                info!("toggle pause");
+                state.pause_all_active_events();
             } else {
-                //info!("resume");
-                //state.resume_all_active_events();
+                info!("resume");
+                state.resume_all_active_events();
             }
         }
         
@@ -217,23 +236,8 @@ fn set_modifier_state(state: &mut State, ev: &InputEvent) {
             state.ctrl_pressed = value == KeyEventType::PRESSED || value == KeyEventType::REPEAT;
         }
         EventSummary::Led(_, LedCode::LED_CAPSL, value) => {
-            state.capslock_pressed = value == 1;
+            state.capslock_pressed = value == 0;
         }
-        // EventSummary::Key(_, KeyCode::KEY_CAPSLOCK, value) => {
-        //     // for caps lock, we need to read the led state
-        //     if value == KeyEventType::PRESSED || value == KeyEventType::REPEAT {
-        //         state.capslock_pressed = true;
-        //     } else {
-        //         state.capslock_pressed = false;
-        //     }
-        //     info!("capslock: {}, value: {:?}", state.capslock_pressed, ev.destructure());
-        // }
-        //EventSummary::Key(_, KeyCode::KEY_LEFTMETA | KeyCode::KEY_RIGHTMETA, value) => {
-        //    state.meta_pressed = value == KeyEventType::PRESSED || value == KeyEventType::REPEAT;
-        //}
-        //EventSummary::Key(_, KeyCode::KEY_LEFTSHIFT | KeyCode::KEY_RIGHTSHIFT, value) => {
-        //    state.shift_pressed = value == KeyEventType::PRESSED || value == KeyEventType::REPEAT;
-        //}
         _ => {}
     }
 }
