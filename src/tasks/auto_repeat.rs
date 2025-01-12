@@ -7,10 +7,7 @@ use evdev::{
     LedCode,
 };
 use tokio::{
-    sync::{
-        Mutex,
-        mpsc,
-    },
+    sync::Mutex,
     task::{
         JoinSet,
         JoinHandle,
@@ -21,13 +18,7 @@ use tokio::{
     }
 };
 use once_cell::sync::Lazy;
-use std::{
-    collections::HashMap,
-    sync::{
-        Arc, 
-        Condvar
-    },
-};
+use std::collections::HashMap;
 use crate::{
     functions, 
     key_event_type::KeyEventType, 
@@ -42,8 +33,7 @@ struct State {
     ctrl_pressed: bool,
     capslock_pressed: bool,
     //meta_pressed: bool,
-    active_events: HashMap<KeyCode, JoinHandle<()>>,
-    //control_channel: (mpsc::Sender<bool>, mpsc::Receiver<bool>),
+    active_events: HashMap<KeyCode, (JoinHandle<()>, InputEvent)>,
 }
 
 impl State {
@@ -54,7 +44,6 @@ impl State {
             capslock_pressed: false,
             //meta_pressed: false,
             active_events: HashMap::new(),
-            //control_channel: mpsc::channel(1),
         }
     }
 
@@ -126,31 +115,31 @@ impl State {
     }
 
     fn stop_active_event(&mut self, key: KeyCode) {
-        if let Some(handle) = self.active_events.remove(&key) {
-            handle.abort();
+        if let Some(value) = self.active_events.remove(&key) {
+            value.0.abort();
         }
     }
 
-    fn start_active_event(&mut self, key: KeyCode, handle: JoinHandle<()>) {
-        self.active_events.insert(key, handle);
+    fn start_active_event(&mut self, key: KeyCode, handle: JoinHandle<()>, ie: InputEvent) {
+        self.active_events.insert(key, (handle, ie));
     }
 
     fn stop_all_active_events(&mut self) {
-        for handle in self.active_events.values() {
-            handle.abort();
+        for value in self.active_events.values() {
+            value.0.abort();
         }
         self.active_events.clear();
     }
 
     fn pause_all_active_events(&mut self) {
-        for handle in self.active_events.values() {
-            handle.abort();
+        for value in self.active_events.values() {
+            value.0.abort();
         }
     }
 
     fn resume_all_active_events(&mut self) {
-        for key in self.active_events.keys() {
-            //tokio::spawn(repeat_event(ev));
+        for value in self.active_events.values() {
+            tokio::spawn(repeat_event(value.1));
         }
     }
 }
@@ -192,7 +181,7 @@ async fn process_input(ev: InputEvent) -> () {
     // timers start
     // with key modifier (ctrl + alt) + key
     if state.all_modifiers_pressed() && state.is_repeatable(ev) && !state.is_active_event(ev) {
-        state.start_active_event(KeyCode::new(ev.code()), tokio::spawn(repeat_event(ev)));
+        state.start_active_event(KeyCode::new(ev.code()), tokio::spawn(repeat_event(ev)), ev);
     } 
     
     // timers end
@@ -256,9 +245,9 @@ pub async fn repeat_event(ie: InputEvent) {
     let pressed_time = 100; //ms
     let released_time = 350; //ms
     let tx = signals::get_virtual_device_tx().await;
-
+    info!("START fake press");
     loop {
-        info!("fake press");
+        
         // todo copy InputEvent and modify
         //let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_B.0, KeyEventType::PRESSED.into());
         //tx.send(ie).await.unwrap();

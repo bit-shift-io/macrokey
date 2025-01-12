@@ -82,7 +82,7 @@ async fn process_input(id: ID, ev: InputEvent, tx: &tokio::sync::mpsc::Sender<In
 async fn capture_events(device_name:&str, id: ID) {
     let mut device = try_return!(functions::get_device_by_name(device_name));
     functions::log_device_keys(&device);
-    device.grab().unwrap(); // lock
+    device.grab().unwrap_or_default(); // lock - todo: can crash here if device locked
     let tx = signals::get_virtual_device_tx().await;
     let mut events = device.into_event_stream().unwrap();
     while let Ok(ev) = events.next_event().await {
