@@ -105,9 +105,12 @@ impl State {
         key == KeyCode::KEY_GRAVE
     }
 
-    fn is_toggle_key(&mut self, ev: InputEvent) -> bool {
-        let key = KeyCode::new(ev.code());
-        key == KeyCode::KEY_CAPSLOCK
+    fn is_toggle_pause(&mut self, ev: InputEvent) -> bool {
+        // monitoring the led state, not the button itself
+        if ev.event_type() == EventType::LED && ev.code() == LedCode::LED_CAPSL.0 { return true }
+        //let key = KeyCode::new(ev.code());
+        //key == KeyCode::KEY_CAPSLOCK
+        false
     }
 
     fn is_toggle_pressed(&mut self) -> bool {
@@ -138,8 +141,13 @@ impl State {
     }
 
     fn resume_all_active_events(&mut self) {
+        let mut new_events = Vec::new();
         for value in self.active_events.values() {
-            tokio::spawn(repeat_event(value.1));
+            let handle = tokio::spawn(repeat_event(value.1.clone()));
+            new_events.push((KeyCode::new(value.1.code()), (handle, value.1)));
+        }
+        for (key, value) in new_events {
+            self.active_events.insert(key, value);
         }
     }
 }
@@ -159,7 +167,7 @@ pub async fn task() {
 
         let mut set = JoinSet::new();
         for device in devices {
-            set.spawn(capture_events(device));
+            set.spawn(monitor_events(device));
         }
         set.join_all().await;
         
@@ -170,8 +178,11 @@ pub async fn task() {
 
 
 async fn process_input(ev: InputEvent) -> () {
+    // filter unwanted events
+    if ev.event_type() != EventType::KEY && ev.event_type() != EventType::LED { return };
+
     // log
-    //if ev.event_type() == EventType::KEY && ev.value() == KeyEventType::PRESSED { info!("{:?}", ev.destructure()); };
+    //info!(" > {:?}", ev.destructure());
 
     let mut state = STATE.lock().await;
 
@@ -182,36 +193,30 @@ async fn process_input(ev: InputEvent) -> () {
     // with key modifier (ctrl + alt) + key
     if state.all_modifiers_pressed() && state.is_repeatable(ev) && !state.is_active_event(ev) {
         state.start_active_event(KeyCode::new(ev.code()), tokio::spawn(repeat_event(ev)), ev);
-    } 
-    
+    }
+
     // timers end
     // with single key press
     // ensure no modifier keys are active
     if !state.any_modifier_pressed() && state.is_repeatable(ev) {
-
         // same key pressed
-        if state.is_active_event(ev) {
+        if state.is_active_event(ev) { // todo: flakey, modifiers stop working when using these... why?
             info!("{}: stop!", TASK_ID);
             state.stop_active_event(KeyCode::new(ev.code()));
         }
 
         // delete all timers
         if state.is_stop_all_key(ev) {
-            info!("{}: stop all!", TASK_ID);
             state.stop_all_active_events();
         }
-
-        // toggle timers on/off
-        if state.is_toggle_key(ev) {
-            if state.is_toggle_pressed() {
-                info!("toggle pause");
-                state.pause_all_active_events();
-            } else {
-                info!("resume");
-                state.resume_all_active_events();
-            }
+    }
+    // toggle pause/resume
+    else if !state.any_modifier_pressed() && state.is_toggle_pause(ev) {
+        if state.is_toggle_pressed() {
+            state.pause_all_active_events();
+        } else {
+            state.resume_all_active_events();
         }
-        
     }
 }
 
@@ -225,14 +230,14 @@ fn set_modifier_state(state: &mut State, ev: &InputEvent) {
             state.ctrl_pressed = value == KeyEventType::PRESSED || value == KeyEventType::REPEAT;
         }
         EventSummary::Led(_, LedCode::LED_CAPSL, value) => {
-            state.capslock_pressed = value == 0;
+            state.capslock_pressed = value == 1;
         }
         _ => {}
     }
 }
 
 
-async fn capture_events(device: Device) {
+async fn monitor_events(device: Device) {
     functions::log_device_keys(&device);
     let mut events = device.into_event_stream().unwrap();
     while let Ok(ev) = events.next_event().await {
@@ -245,16 +250,13 @@ pub async fn repeat_event(ie: InputEvent) {
     let pressed_time = 100; //ms
     let released_time = 350; //ms
     let tx = signals::get_virtual_device_tx().await;
-    info!("START fake press");
+    let key_code = ie.code();
+    let press = InputEvent::new_now(EventType::KEY.0, key_code, KeyEventType::PRESSED.into());
+    let release = InputEvent::new_now(EventType::KEY.0, key_code, KeyEventType::RELEASED.into());
     loop {
-        
-        // todo copy InputEvent and modify
-        //let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_B.0, KeyEventType::PRESSED.into());
-        //tx.send(ie).await.unwrap();
+        tx.send(press).await.unwrap();
         sleep(Duration::from_millis(pressed_time)).await;
-
-        //let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_B.0, KeyEventType::RELEASED.into());
-        //tx.send(ie).await.unwrap();
+        tx.send(release).await.unwrap();
         sleep(Duration::from_millis(released_time)).await;
     }
 }
