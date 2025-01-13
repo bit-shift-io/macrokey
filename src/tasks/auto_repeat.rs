@@ -25,8 +25,65 @@ use crate::{
     signals
 };
 
+const PRESSED_TIME: u64 = 100; // ms
+const RELEASED_TIME: u64 = 350; // ms
 const TASK_ID: &str = "AUTO REPEAT";
 static STATE: Lazy<Mutex<State>> = Lazy::new(|| Mutex::new(State::new()));
+
+
+pub async fn task() {
+    info!("{}", TASK_ID);
+
+    loop {
+        let mut set = JoinSet::new();
+        for device in functions::get_devices_by_regex("keyboard") {
+            set.spawn(monitor_events(device));
+        }
+        set.join_all().await;
+        
+        info!("{} error, retry in 60s", TASK_ID);
+        sleep(Duration::from_secs(60)).await;
+    }
+}
+
+
+async fn monitor_events(device: Device) {
+    functions::log_device_keys(&device);
+    let mut events = device.into_event_stream().unwrap();
+    while let Ok(ev) = events.next_event().await {
+        // filter unwanted events, reduce locks
+        if ev.event_type() != EventType::KEY && ev.event_type() != EventType::LED { continue };
+
+        // lock and process
+        let mut state = STATE.lock().await;
+        state.process_input(ev).await;
+    }
+}
+
+
+pub async fn repeat_event(ie: InputEvent) {
+    // if we exit this task when the key is down, it remains down.
+    let tx = signals::get_virtual_device_tx().await;
+    let key_code = ie.code();
+    let press = InputEvent::new_now(EventType::KEY.0, key_code, KeyEventType::PRESSED.into());
+    let release = InputEvent::new_now(EventType::KEY.0, key_code, KeyEventType::RELEASED.into());
+    loop {
+        tx.send(press).await.unwrap();
+        sleep(Duration::from_millis(PRESSED_TIME)).await;
+        tx.send(release).await.unwrap();
+        sleep(Duration::from_millis(RELEASED_TIME)).await;
+    }
+}
+
+
+pub async fn stop_repeat_event(ie: InputEvent) {
+    // ensure the key is released when exiting the task
+    let key_code = ie.code();
+    let tx = signals::get_virtual_device_tx().await;
+    let release = InputEvent::new_now(EventType::KEY.0, key_code, KeyEventType::RELEASED.into());
+    tx.send(release).await.unwrap();
+}
+
 
 
 #[derive(Debug)]
@@ -48,6 +105,43 @@ impl State {
             repeat_events: HashMap::new(),
         }
     }
+
+
+    async fn process_input(&mut self, ev: InputEvent) -> () {
+        // log
+        //info!(" > {:?}", ev.destructure());
+
+        self.update_state(&ev);
+
+        // timers start
+        // all modifiers pressed + repeatable key + not already a repeat
+        if self.all_modifiers_pressed() && self.is_repeatable(ev) && !self.is_active_repeat_event(ev) {
+            self.start_repeat_event(KeyCode::new(ev.code()), ev);
+        }
+
+        // timers end
+        // no modifiers pressed + repeatable key
+        if !self.any_modifier_pressed() && self.is_repeatable(ev) {
+            // active repeat event
+            if self.is_active_repeat_event(ev) { // todo: flakey, modifiers stop working when using these... why?
+                self.stop_repeat_event(KeyCode::new(ev.code()));
+            }
+
+            // delete all timers
+            // stop all key
+            if self.is_stop_all_key(ev) {
+                self.stop_all_repeat_events();
+            }
+        }
+        // no modifiers pressed + toggle key(led)
+        else if !self.any_modifier_pressed() && self.is_toggle_pause(ev) {
+            match self.is_toggle_pressed() {
+                true => self.pause_all_repeat_events(),
+                false => self.resume_all_repeat_events(),
+            }
+        }
+    }
+
 
     fn update_state(&mut self, ev: &InputEvent) {
         match ev.destructure() {
@@ -140,6 +234,7 @@ impl State {
     fn stop_repeat_event(&mut self, key: KeyCode) {
         if let Some(value) = self.repeat_events.remove(&key) {
             value.0.abort();
+            tokio::spawn(stop_repeat_event(value.1));
         }
     }
 
@@ -151,6 +246,7 @@ impl State {
     fn stop_all_repeat_events(&mut self) {
         for value in self.repeat_events.values() {
             value.0.abort();
+            tokio::spawn(stop_repeat_event(value.1));
         }
         self.repeat_events.clear();
     }
@@ -158,6 +254,7 @@ impl State {
     fn pause_all_repeat_events(&mut self) {
         for value in self.repeat_events.values() {
             value.0.abort();
+            tokio::spawn(stop_repeat_event(value.1));
         }
     }
 
@@ -170,90 +267,5 @@ impl State {
         for (key, value) in new_events {
             self.repeat_events.insert(key, value);
         }
-    }
-}
-
-
-pub async fn task() {
-    info!("{}", TASK_ID);
-
-    loop {
-        let devices = functions::get_devices_by_regex("keyboard");
-
-        let mut set = JoinSet::new();
-        for device in devices {
-            set.spawn(monitor_events(device));
-        }
-        set.join_all().await;
-        
-        info!("{} error, retry in 60s", TASK_ID);
-        sleep(Duration::from_secs(60)).await;
-    }
-}
-
-
-async fn process_input(ev: InputEvent) -> () {
-    // filter unwanted events
-    if ev.event_type() != EventType::KEY && ev.event_type() != EventType::LED { return };
-
-    // log
-    //info!(" > {:?}", ev.destructure());
-
-    let mut state = STATE.lock().await;
-    state.update_state(&ev);
-
-    // timers start
-    // all modifiers pressed + repeatable key + not already a repeat
-    if state.all_modifiers_pressed() && state.is_repeatable(ev) && !state.is_active_repeat_event(ev) {
-        state.start_repeat_event(KeyCode::new(ev.code()), ev);
-    }
-
-    // timers end
-    // no modifiers pressed + repeatable key
-    if !state.any_modifier_pressed() && state.is_repeatable(ev) {
-        // active repeat event
-        if state.is_active_repeat_event(ev) { // todo: flakey, modifiers stop working when using these... why?
-            info!("{}: stop!", TASK_ID);
-            state.stop_repeat_event(KeyCode::new(ev.code()));
-        }
-
-        // delete all timers
-        // stop all key
-        if state.is_stop_all_key(ev) {
-            state.stop_all_repeat_events();
-        }
-    }
-    // no modifiers pressed + toggle key(led)
-    else if !state.any_modifier_pressed() && state.is_toggle_pause(ev) {
-        match state.is_toggle_pressed() {
-            true => state.pause_all_repeat_events(),
-            false => state.resume_all_repeat_events(),
-        }
-    }
-}
-
-
-async fn monitor_events(device: Device) {
-    functions::log_device_keys(&device);
-    let mut events = device.into_event_stream().unwrap();
-    while let Ok(ev) = events.next_event().await {
-        process_input(ev).await;
-    }
-}
-
-
-pub async fn repeat_event(ie: InputEvent) {
-    let pressed_time = 100; //ms
-    let released_time = 350; //ms
-    let tx = signals::get_virtual_device_tx().await;
-    //info!("{}: start repeat: {:?}", TASK_ID, ie.destructure());
-    let key_code = ie.code();
-    let press = InputEvent::new_now(EventType::KEY.0, key_code, KeyEventType::PRESSED.into());
-    let release = InputEvent::new_now(EventType::KEY.0, key_code, KeyEventType::RELEASED.into());
-    loop {
-        tx.send(press).await.unwrap();
-        sleep(Duration::from_millis(pressed_time)).await;
-        tx.send(release).await.unwrap();
-        sleep(Duration::from_millis(released_time)).await;
     }
 }
