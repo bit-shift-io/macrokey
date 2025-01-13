@@ -29,12 +29,12 @@ pub async fn task(device_name: &str) {
     }
 
     for device in devices {
-        tokio::spawn(log_device_events(device));
+        tokio::spawn(monitor_events(device));
     }
 }
 
 
-async fn log_device_events(device: Device) {
+async fn monitor_events(device: Device) {
     let device_name = device.name().unwrap_or("<unnamed>").to_string();
     let mut events = device.into_event_stream().unwrap();
     while let Ok(ev) = events.next_event().await {

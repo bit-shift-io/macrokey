@@ -55,24 +55,20 @@ async fn process_input(id: ID, ev: InputEvent, tx: &tokio::sync::mpsc::Sender<In
     match ev.destructure() {
         EventSummary::Key(_, KeyCode::KEY_POWER, _) => { toggle_cec_display().await; } // power button
 
-        EventSummary::Key(_, KeyCode::KEY_F2, _) => { // windows icon  -> windows key
-            let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_LEFTMETA.0, ev.value());        
-            tx.send(ie).await.unwrap();
+        EventSummary::Key(_, KeyCode::KEY_F2, _) => { // windows icon  -> windows key    
+            tx.send(InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_LEFTMETA.0, ev.value())).await.unwrap();
         }
-        // EventSummary::Key(_, KeyCode::KEY_HOMEPAGE, _) => { // home icon
-        //     let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_LEFTMETA.0, ev.value());        
-        //     tx.send(ie).await.unwrap();
+        // EventSummary::Key(_, KeyCode::KEY_HOMEPAGE, _) => { // home icon     
+        //     tx.send(InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_LEFTMETA.0, ev.value())).await.unwrap();
         // }
-        EventSummary::Key(_, KeyCode::KEY_COMPOSE, _) => { // menu icon -> left mouse 
-            let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::BTN_LEFT.0, ev.value());        
-            tx.send(ie).await.unwrap();
+        EventSummary::Key(_, KeyCode::KEY_COMPOSE, _) => { // menu icon -> left mouse      
+            tx.send(InputEvent::new_now(EventType::KEY.0, KeyCode::BTN_LEFT.0, ev.value())).await.unwrap();
         }
-        EventSummary::Key(_, KeyCode::KEY_CONFIG, _) => { // media icon -> browser
-            let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_WWW.0, ev.value());        
-            tx.send(ie).await.unwrap();}
+        EventSummary::Key(_, KeyCode::KEY_CONFIG, _) => { // media icon -> browser     
+            tx.send(InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_WWW.0, ev.value())).await.unwrap();
+        }
         EventSummary::Key(_, KeyCode::KEY_MAIL, _) => { // exclamation mark icon -> atl + tab
-            let ie = InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_SEARCH.0, ev.value()); 
-            tx.send(ie).await.unwrap();
+            tx.send(InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_SEARCH.0, ev.value())).await.unwrap();
         }
         _ => { tx.send(ev).await.unwrap(); } // passthrough
     }

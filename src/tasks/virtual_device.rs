@@ -56,7 +56,7 @@ pub async fn task() {
     // display output device paths
     for path in device.enumerate_dev_nodes_blocking().unwrap() {
         let path = path.unwrap();
-        println!("{}: {}", TASK_ID, path.display());
+        info!("{}: {}", TASK_ID, path.display());
     }
 
     // get a lock on the receiver for the virtual device channel
@@ -65,6 +65,5 @@ pub async fn task() {
     // handle the event in a loop
     while let Some(event) = rx.recv().await {
         device.emit(&[event.clone()]).unwrap();
-        //info!("{}: {:?}", TASK_ID, event.destructure());
     }
 }

@@ -38,12 +38,6 @@ impl PartialEq<KeyEventType> for i32 {
     }
 }
 
-// impl From<KeyEventType> for i32 {
-//     fn from(event_type: KeyEventType) -> Self {
-//         event_type.value()
-//     }
-// }
-
 impl Into<i32> for KeyEventType {
     fn into(self) -> i32 {
         self.value()
