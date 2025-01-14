@@ -115,13 +115,13 @@ impl State {
 
         // timers start
         // all modifiers pressed + repeatable key + not already a repeat
-        if self.all_modifiers_pressed() && self.is_repeatable(ev) && !self.is_active_repeat_event(ev) {
+        if self.all_modifiers_pressed() && self.is_not_modifier(ev) && !self.is_active_repeat_event(ev) {
             self.start_repeat_event(KeyCode::new(ev.code()), ev);
         }
 
         // timers end
         // no modifiers pressed + repeatable key
-        if !self.any_modifier_pressed() && self.is_repeatable(ev) {
+        if !self.any_modifier_pressed() && self.is_not_modifier(ev) {
             // active repeat event
             if self.is_active_repeat_event(ev) { // todo: flakey, modifiers stop working when using these... why?
                 self.stop_repeat_event(KeyCode::new(ev.code()));
@@ -193,7 +193,7 @@ impl State {
     ///
     /// - Ctrl
     /// - Alt
-    fn is_repeatable(&mut self, ev: InputEvent) -> bool {
+    fn is_not_modifier(&mut self, ev: InputEvent) -> bool {
         // filter dud events
         if ev.event_type() == EventType::KEY && ev.value() == KeyEventType::PRESSED { } // pass
         else { return false };
@@ -203,6 +203,7 @@ impl State {
         match ev.destructure() {
             EventSummary::Key(_, KeyCode::KEY_LEFTALT | KeyCode::KEY_RIGHTALT, _) => { return false } // alt key
             EventSummary::Key(_, KeyCode::KEY_LEFTCTRL | KeyCode::KEY_RIGHTCTRL, _) => { return false } // ctl key
+            EventSummary::Key(_, KeyCode::KEY_LEFTSHIFT | KeyCode::KEY_RIGHTSHIFT, _) => { return false } // shift
             EventSummary::Key(_, KeyCode::KEY_LEFTMETA | KeyCode::KEY_RIGHTMETA, _) => { return false } // meta
             EventSummary::Key(_, KeyCode::KEY_CAPSLOCK, _) => { return false } // caps
             _ => {}
