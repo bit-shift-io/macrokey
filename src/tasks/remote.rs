@@ -19,7 +19,7 @@ use crate::{
 
 const TASK_ID: &str = "REMOTE";
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 enum ID {
     Keyboard,
     Mouse,
@@ -48,8 +48,8 @@ pub async fn task() {
 
 
 async fn process_input(id: ID, ev: InputEvent, tx: &tokio::sync::mpsc::Sender<InputEvent>) -> () {
-    // log + filter pressed events
-    if ev.event_type() == EventType::KEY && ev.value() == KeyEventType::PRESSED { info!("{:?}: {:?}", id, ev.destructure()); };
+    // log
+    //if ev.event_type() == EventType::KEY && ev.value() == KeyEventType::PRESSED { info!("{:?}: {:?}", id, ev.destructure()); };
 
     // process
     match ev.destructure() {
@@ -72,7 +72,12 @@ async fn process_input(id: ID, ev: InputEvent, tx: &tokio::sync::mpsc::Sender<In
         EventSummary::Key(_, KeyCode::KEY_MAIL, _) => { // exclamation mark icon -> atl + tab
             tx.send(InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_SEARCH.0, ev.value())).await.unwrap();
         }
-        _ => { tx.send(ev).await.unwrap(); } // passthrough
+        _ => { // passthrough
+            // filter system events
+            if id == ID::System { return };
+            //info!("{:?}: {:?}", id, ev.destructure());
+            tx.send(ev).await.unwrap();
+        } 
     }
 }
 
@@ -90,7 +95,6 @@ async fn capture_events(device_name:&str, id: ID) {
 
 
 async fn toggle_cec_display() {
-    info!("{}: toggle cec", TASK_ID);
     match functions::run_command("echo 'pow 0' | cec-client -s -d 1").await {
        Ok(output) => { 
            let stdout = String::from_utf8_lossy(&output.stdout);
