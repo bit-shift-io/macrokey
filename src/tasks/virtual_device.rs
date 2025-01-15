@@ -45,13 +45,21 @@ pub async fn task() {
     //let relative_axes = AttributeSet::from_iter((0..=0x0c).map(|code| RelativeAxisCode(code)));
 
     // create a new device from an existing default
-    let mut device = VirtualDeviceBuilder::new().unwrap()
-        .name("macrokey virtual device")
-        .with_keys(&keys).unwrap()
-        .with_relative_axes(&relative_axes).unwrap()
-        //.with_absolute_axis(&absolute_axis).unwrap()
-        .build()
-        .unwrap();
+    let mut device = match VirtualDeviceBuilder::new() {
+        Ok(builder) => {
+            builder
+                .name("macrokey virtual device")
+                .with_keys(&keys).unwrap()
+                .with_relative_axes(&relative_axes).unwrap()
+                //.with_absolute_axis(&absolute_axis)?
+                .build().unwrap()
+        },
+        Err(e) => {
+            error!("{} Creation failed: {}", TASK_ID, e);
+            return
+        }
+    };
+
 
     // display output device paths
     for path in device.enumerate_dev_nodes_blocking().unwrap() {
