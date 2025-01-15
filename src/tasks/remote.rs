@@ -48,12 +48,14 @@ pub async fn task() {
 
 
 async fn process_input(id: ID, ev: InputEvent, tx: &tokio::sync::mpsc::Sender<InputEvent>) -> () {
-    // log
+    // log + filter pressed events
     if ev.event_type() == EventType::KEY && ev.value() == KeyEventType::PRESSED { info!("{:?}: {:?}", id, ev.destructure()); };
 
     // process
     match ev.destructure() {
-        EventSummary::Key(_, KeyCode::KEY_POWER, _) => { toggle_cec_display().await; } // power button
+        EventSummary::Key(_, KeyCode::KEY_POWER, value) => { // power button
+            if value == KeyEventType::PRESSED { toggle_cec_display().await; }
+        } 
 
         EventSummary::Key(_, KeyCode::KEY_F2, _) => { // windows icon  -> windows key    
             tx.send(InputEvent::new_now(EventType::KEY.0, KeyCode::KEY_LEFTMETA.0, ev.value())).await.unwrap();
@@ -88,6 +90,7 @@ async fn capture_events(device_name:&str, id: ID) {
 
 
 async fn toggle_cec_display() {
+    info!("{}: toggle cec", TASK_ID);
     match functions::run_command("echo 'pow 0' | cec-client -s -d 1").await {
        Ok(output) => { 
            let stdout = String::from_utf8_lossy(&output.stdout);
