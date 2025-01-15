@@ -69,7 +69,8 @@ EOL
 
 function fn_user_group {
     sudo usermod -a -G input $USER
-    echo "please reboot to apply"
+    newgrp input # login to group
+    echo "added to input group"
 }
 
 

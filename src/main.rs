@@ -25,7 +25,7 @@ async fn main() {
     // tasks
     let mut set = JoinSet::new();
     //set.spawn(monitor::task("")); // log all devices/events
-    set.spawn(hotkeys::task());
+    //set.spawn(hotkeys::task());
     //set.spawn(auto_repeat::task());
     set.spawn(remote::task());
     set.spawn(virtual_device::task());
