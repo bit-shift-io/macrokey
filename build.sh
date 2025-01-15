@@ -20,8 +20,8 @@ function main {
     3) Build Debug
     4) Run Debug
     
-    6) Input User Group
-    7) Install User Service
+    6) Install ROOT Service
+    7) Install USER Service
     
     *) Any key to exit
     :" ans;
@@ -31,15 +31,20 @@ function main {
         2) fn_build ;;
         3) fn_build_debug ;;
         4) fn_run_debug ;;
-        6) fn_user_group ;;
-        7) fn_service ;;
+        6) fn_root_service ;;
+        7) fn_user_service ;;
         *) $SHELL ;;
     esac
     done
 }
 
 
-function fn_service {
+function fn_user_service {
+    sudo usermod -a -G input $USER
+    newgrp input # login to group
+
+    echo "added to input group"
+    
     mkdir -p $HOME/.config/systemd/user/
     DIR="$( cd "$( dirname "$0" )" && pwd )"
 
@@ -57,17 +62,30 @@ Restart=on-failure
 WantedBy=default.target
 EOL
 
-
     systemctl --user enable macrokey.service
     systemctl --user start macrokey.service
     systemctl --user status macrokey.service
 }
 
 
-function fn_user_group {
-    sudo usermod -a -G input $USER
-    newgrp input # login to group
-    echo "added to input group"
+function fn_root_service {
+    DIR="$( cd "$( dirname "$0" )" && pwd )"
+
+sudo tee /etc/systemd/system//macrokey.service > /dev/null << EOL 
+[Unit]
+Description=macrokey
+
+[Service]
+ExecStart=${DIR}/macrokey
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+EOL
+
+    sudo systemctl enable macrokey.service
+    sudo systemctl start macrokey.service
+    sudo systemctl status macrokey.service
 }
 
 
@@ -91,7 +109,6 @@ function fn_build_debug {
 function fn_run_debug {
     ./target/debug/macrokey
 }
-
 
 
 # pass all args
