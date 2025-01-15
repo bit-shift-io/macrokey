@@ -46,15 +46,12 @@ function fn_service {
 tee $HOME/.config/systemd/user/macrokey.service > /dev/null << EOL 
 [Unit]
 Description=macrokey
-StartLimitIntervalSec=60
-StartLimitBurst=4
 
 [Service]
 ExecStart=${DIR}/macrokey
 Restart=on-failure
-RestartSec=1
-SuccessExitStatus=3 4
-RestartForceExitStatus=3 4
+#StartLimitIntervalSec=60
+#StartLimitBurst=4
 
 [Install]
 WantedBy=default.target
