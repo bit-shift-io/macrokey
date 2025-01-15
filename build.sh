@@ -62,8 +62,7 @@ Restart=on-failure
 WantedBy=default.target
 EOL
 
-    systemctl --user enable macrokey.service
-    systemctl --user start macrokey.service
+    systemctl --user enable macrokey.service --now
     systemctl --user status macrokey.service
 }
 
@@ -83,8 +82,7 @@ Restart=on-failure
 WantedBy=default.target
 EOL
 
-    sudo systemctl enable macrokey.service
-    sudo systemctl start macrokey.service
+    sudo systemctl enable macrokey.service --now
     sudo systemctl status macrokey.service
 }
 
